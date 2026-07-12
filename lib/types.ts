@@ -44,6 +44,10 @@ export interface ScrapedAmazonPage {
   reviewsScanned: number;
   /** Convenience non-null alias of totalReviewCount, for "Based on N reviews" display. */
   totalReviews: number;
+  /** Numeric price in the page's own currency (whatever Amazon shows as the current buy-box price), null if unreadable on this page variant. */
+  price: number | null;
+  /** The currency symbol price was read in (e.g. "₹", "$"), null alongside price when unreadable. */
+  priceCurrency: string | null;
 }
 
 export interface RuleCheckResult {

@@ -1,13 +1,16 @@
 import type { DeepAnalysisProvider, ScrapedAmazonPage, StatisticalAnalysis } from './types';
 
-export const SYSTEM_PROMPT = `You are TrustLens, a review-pattern assistant. Use cautious, pattern/confidence language only. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof.
+export const SYSTEM_PROMPT = `You are TrustLens, a review-authenticity assistant. Your job is spotting PATTERNS IN THE REVIEWS THEMSELVES — signs of genuine vs. manipulated feedback — not reviewing the product. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof.
+
+CRITICAL RULE — confidence is not yours to call: TrustLens's statistical engine already computes and displays a High/Moderate/Low confidence rating elsewhere on the same screen. You must NEVER state, imply, or hedge about confidence, certainty, or sample size in your own words. Do not write "moderate confidence", "high confidence", "low confidence", "limited signal", "limited data", "small sample", "not enough reviews to be sure", or anything similar — in the verdict line OR in any bullet. If two different confidence claims appear on the same card, that's a contradiction the shopper will notice and distrust. Report FINDINGS only; leave confidence entirely to the engine.
 
 Output a "quick verdict card", never an essay:
-Line 1: one short sentence — the bottom-line verdict, nothing else. Plain text, no emphasis markers on this line.
+Line 1: one short sentence, MAXIMUM 10 WORDS — the bottom-line finding, nothing else, no confidence language. Plain text, no emphasis markers.
 Then 3-5 bullet lines (never more than 5), each its own line, each ONE line only — max about 12-15 words, never a paragraph, never wrapping.
 Each bullet starts with exactly one symbol for its sentiment: ✅ positive/reassuring, ⚠️ caution/concern, 🔍 neutral observation, ⭐ standout point.
 Lead each bullet with the key word or finding first — no filler like "It appears that" or "One thing to note is".
-Within each bullet, wrap the single most important 2-4 word phrase — the key finding — in **double asterisks**. Exactly one such span per bullet, never the whole sentence, never zero.
+Bullets are about REVIEW AUTHENTICITY, not product quality: patterns across the reviews (timing clusters, repeated phrasing, verified-purchase mix, rating-shape anomalies, price-vs-review-count sanity), red flags, and what a skeptical shopper should specifically check. At most ONE bullet may comment on product sentiment (what reviewers liked/disliked about the product itself) — the rest must be about the reviews' own trustworthiness patterns.
+Within each bullet, wrap only the single most essential 1-3 word phrase — the key finding — in **double asterisks**. Exactly one such span per bullet, kept SHORT (1-3 words, never a whole clause), never the whole sentence, never zero.
 That double-asterisk span is the ONLY formatting allowed anywhere in the response — no *italics*, no # headers, no - or * list dashes, no backticks.`;
 
 export interface DeepAnalysisInput {
@@ -41,16 +44,18 @@ function buildPrompt(page: ScrapedAmazonPage, statistical: StatisticalAnalysis):
     reviewLines.join('\n'),
     [
       'Write the deep dive as a quick verdict card, exactly this shape:',
-      'Line 1: one-sentence bottom-line verdict, no emphasis markers.',
+      'Line 1: one bottom-line finding, MAXIMUM 10 WORDS, no confidence/certainty language, no emphasis markers.',
       'Then 3-5 bullets, one short line each (max ~12-15 words), each starting with ✅, ⚠️, 🔍, or ⭐ based on sentiment. Lead with the key word. No paragraphs.',
-      'Within each bullet, wrap the one key 2-4 word phrase in **double asterisks** — exactly one span per bullet. No other markdown symbols anywhere (no *italics*, no #, no - list dashes, no backticks).',
+      'Focus on REVIEW AUTHENTICITY (timing patterns, repeated phrasing, verified-purchase mix, rating-shape anomalies, price-vs-review-count sanity, red flags to check) — not product opinions. At most ONE bullet may be about product sentiment.',
+      'Never mention confidence, certainty, or sample size in your own words (no "moderate/high/low confidence", no "limited data", no "small sample") — that is shown elsewhere on screen and is not yours to state.',
+      'Within each bullet, wrap only the one key 1-3 word phrase in **double asterisks** — exactly one short span per bullet. No other markdown symbols anywhere (no *italics*, no #, no - list dashes, no backticks).',
       '',
       'Example of the target shape (do not reuse this content — match the format only):',
-      'Likely genuine — natural review pattern, minor cautions.',
-      '✅ **Natural rating spread**, not manipulated',
-      '⚠️ Reports of **near-expiry stock** — check the date on arrival',
-      '🔍 Texture praised as **lightweight, fast-absorbing**',
-      '⚠️ **Mixed results** — patch-test the retinol first',
+      'Reviews show a natural pattern with minor cautions.',
+      '✅ **Verified purchases** dominate the sample, not incentivized',
+      '⚠️ A cluster of reviews **posted the same week** — worth a look',
+      '🔍 Similar phrasing appears across a **few reviews**',
+      '⭐ Rating shape declines naturally, no artificial spike',
     ].join('\n'),
   ].join('\n\n');
 }
@@ -89,7 +94,7 @@ async function runGemini(apiKey: string, prompt: string): Promise<string> {
   }
 
   const text = candidate?.content?.parts?.map((part: { text?: string }) => part.text).join('').trim();
-  return stripMarkdown(text) || 'No deep-dive text returned.';
+  return cleanDeepDiveText(text) || 'No deep-dive text returned.';
 }
 
 async function runOpenAI(apiKey: string, prompt: string): Promise<string> {
@@ -120,7 +125,36 @@ async function runOpenAI(apiKey: string, prompt: string): Promise<string> {
 
   const text = payload.output_text
     || payload.output?.flatMap((item: { content?: { text?: string }[] }) => item.content ?? []).map((content: { text?: string }) => content.text).join('').trim();
-  return stripMarkdown(text) || 'No deep-dive text returned.';
+  return cleanDeepDiveText(text) || 'No deep-dive text returned.';
+}
+
+// Single funnel both providers' raw text passes through: strip markdown
+// formatting, then strip any confidence/certainty language the model
+// emitted despite the prompt forbidding it (item 1, CRITICAL) — the
+// statistical engine owns the confidence claim shown elsewhere on the same
+// card, and two disagreeing authorities on one screen is worse than a
+// slightly awkward sentence with the offending phrase removed.
+function cleanDeepDiveText(text: string | undefined): string {
+  return stripConfidenceLanguage(stripMarkdown(text));
+}
+
+// Defense-in-depth backstop for the CRITICAL prompt rule above: LLMs don't
+// reliably follow negative instructions ("never say X") under all sampling
+// conditions, so this removes the specific banned phrases outright rather
+// than trying to rewrite around them — a plain-looking sentence with the
+// confidence clause quietly gone is far safer than shipping a second,
+// contradicting confidence claim next to the engine's own chip.
+const CONFIDENCE_LANGUAGE_RE =
+  /\b(high|moderate|medium|low)[- ](?:confidence|certainty)\b|\bconfidence\s+(?:is|level|score|rating)\b|\blimited\s+signal\b|\b(?:small|limited|thin|tiny|not\s+enough)\s+(?:sample(?:\s+size)?|review\s+base|data\s*(?:set)?)\b|\bnot\s+(?:enough|much)\s+data\b/gi;
+
+function stripConfidenceLanguage(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(CONFIDENCE_LANGUAGE_RE, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .replace(/^\s*[,;:]\s*/gm, '')
+    .trim();
 }
 
 // Defense-in-depth: the prompt asks for exactly one **emphasis** span per

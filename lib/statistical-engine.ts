@@ -46,22 +46,22 @@ export function analyzeReviews(page: ScrapedAmazonPage): StatisticalAnalysis {
     };
   }
 
-  // Population-level evidence — the star-by-star histogram and Amazon's own
-  // aggregate rating/count — reflects the ENTIRE review base, not the small
-  // sample TrustLens can scrape, so it forms the core of every grade
-  // whenever it's available. Sample-derived checks only join in as
-  // supporting signals, and only once there's enough sample to say anything
-  // meaningful with it.
+  // Population-level evidence — the star-by-star histogram, Amazon's own
+  // aggregate rating/count, and the price-vs-review-count sanity check —
+  // reflects the ENTIRE review base (or, for price, doesn't depend on the
+  // sample at all), so these form the core of every grade whenever
+  // available. Sample-derived checks only join in as supporting signals,
+  // and only once there's enough sample to say anything meaningful with it.
+  const populationChecks = [checkHistogramShape(page), checkOverallRatingEvidence(page), checkPriceVsReviewCount(page)];
   const checks = hasSample
     ? [
-        checkHistogramShape(page),
-        checkOverallRatingEvidence(page),
+        ...populationChecks,
         checkVerifiedRatio(page.reviews),
         checkReviewVelocity(page.reviews),
         checkAgeRatio(page),
         checkRepeatedLanguage(page.reviews),
       ]
-    : [checkHistogramShape(page), checkOverallRatingEvidence(page)];
+    : populationChecks;
 
   const score = Math.round(
     checks.reduce((sum, check) => sum + check.score * checkWeight(check.id), 0) /
@@ -108,6 +108,14 @@ function computeConfidence(page: ScrapedAmazonPage, hasSample: boolean): Confide
 function computeVerdict(grade: TrustGrade, confidence: ConfidenceLevel, checks: RuleCheckResult[]): string {
   const riskCount = checks.filter((check) => check.status === 'risk').length;
 
+  // Price-vs-review-count firing red is the single most concrete,
+  // actionable finding TrustLens can surface (item 3) — when it fires, it
+  // IS the verdict, not a footnote buried under a generic grade-based line.
+  const priceCheck = checks.find((check) => check.id === 'price-vs-reviews');
+  if (priceCheck?.status === 'risk') {
+    return priceCheck.detail;
+  }
+
   if (grade === 'A' || grade === 'B') {
     if (confidence === 'Low') {
       return 'Signals look clean, but the review base is small — skim a few recent reviews yourself before deciding.';
@@ -151,7 +159,7 @@ function hasPopulationCore(page: ScrapedAmazonPage): boolean {
 function checkHistogramShape(page: ScrapedAmazonPage): RuleCheckResult {
   const byStar = new Map(page.ratingHistogram.map((entry) => [entry.star, entry.percent]));
   if (byStar.size < MIN_HISTOGRAM_LEVELS) {
-    return result('histogram-shape', 'Rating distribution shape', 'unknown', 60, 'TrustLens could not read a star-by-star rating breakdown on this page variant.');
+    return result('histogram-shape', 'Rating pattern', 'unknown', 60, "TrustLens couldn't read the star-by-star rating breakdown on this page.");
   }
 
   const p5 = byStar.get(5) ?? 0;
@@ -162,29 +170,29 @@ function checkHistogramShape(page: ScrapedAmazonPage): RuleCheckResult {
   const total = p5 + p4 + p3 + p2 + p1;
 
   if (Math.abs(total - 100) > HISTOGRAM_SUM_TOLERANCE) {
-    return result('histogram-shape', 'Rating distribution shape', 'unknown', 60, 'The star-by-star rating breakdown on this page did not add up to a usable total.');
+    return result('histogram-shape', 'Rating pattern', 'unknown', 60, "The star-by-star numbers on this page didn't add up to something TrustLens could trust.");
   }
 
   const middle = p4 + p3 + p2;
   const shape = `${Math.round(p5)}% 5★, ${Math.round(p4)}% 4★, ${Math.round(p3)}% 3★, ${Math.round(p2)}% 2★, ${Math.round(p1)}% 1★`;
 
   if (middle >= 20) {
-    return result('histogram-shape', 'Rating distribution shape', 'pass', 93, `${shape} — a natural, gradually declining curve across the full review population.`);
+    return result('histogram-shape', 'Rating pattern', 'pass', 93, `${shape} — most ratings are high, with a normal mix of everything else too. That's what a genuine, unmanipulated spread looks like.`);
   }
 
   if (p5 >= 70 && p1 >= 10) {
-    return result('histogram-shape', 'Rating distribution shape', 'risk', 25, `${shape} — ratings cluster at the extremes (5★ and 1★) with a hollow 2-4★ middle, an uneven ("J-shaped") distribution worth a closer look.`);
+    return result('histogram-shape', 'Rating pattern', 'risk', 25, `${shape} — ratings pile up at 5 stars and 1 star with almost nothing in between. That split can mean paid 5-star reviews mixed in with real unhappy buyers — worth a closer look.`);
   }
 
   if (p5 >= 85) {
-    return result('histogram-shape', 'Rating distribution shape', 'risk', 32, `${shape} — ratings are unusually concentrated at five stars with almost no spread across the rest of the scale.`);
+    return result('histogram-shape', 'Rating pattern', 'risk', 32, `${shape} — an unusually high share of 5-star ratings with almost no lower ratings at all. Genuine products almost always pick up some spread.`);
   }
 
   if (middle >= 10) {
-    return result('histogram-shape', 'Rating distribution shape', 'watch', 62, `${shape} — the 2-4★ middle is thinner than typical, so TrustLens reduces confidence slightly.`);
+    return result('histogram-shape', 'Rating pattern', 'watch', 62, `${shape} — fewer mid-range (2-4★) ratings than typical. Not alarming on its own, but a bit thinner than a natural spread.`);
   }
 
-  return result('histogram-shape', 'Rating distribution shape', 'watch', 55, `${shape} — the rating distribution is thin across the middle of the scale.`);
+  return result('histogram-shape', 'Rating pattern', 'watch', 55, `${shape} — the spread of ratings across the scale is thinner than typical for a genuine product.`);
 }
 
 function checkVerifiedRatio(reviews: ReviewSample[]): RuleCheckResult {
@@ -277,34 +285,93 @@ function checkRepeatedLanguage(reviews: ReviewSample[]): RuleCheckResult {
 function checkOverallRatingEvidence(page: ScrapedAmazonPage): RuleCheckResult {
   const { averageRating, totalReviewCount } = page;
   if (averageRating === null || !totalReviewCount) {
-    return result('overall-rating', 'Overall rating & review volume', 'unknown', 60, 'TrustLens could not read this product\'s overall star rating or total review count.');
+    return result('overall-rating', 'Rating & review count', 'unknown', 60, "TrustLens couldn't read this product's overall star rating or total review count.");
   }
 
-  const summary = `${averageRating.toFixed(1)} average across ${totalReviewCount.toLocaleString()} total reviews`;
+  const summary = `${averageRating.toFixed(1)}★ average across ${totalReviewCount.toLocaleString()} reviews`;
 
   if (averageRating >= 4.5 && totalReviewCount >= 10000) {
-    return result('overall-rating', 'Overall rating & review volume', 'pass', 95, `${summary} is strong independent evidence, drawn from Amazon's full review population rather than TrustLens's small visible sample.`);
+    return result('overall-rating', 'Rating & review count', 'pass', 95, `${summary} — a strong, well-established track record.`);
   }
   if (averageRating >= 4.2 && totalReviewCount >= 1000) {
-    return result('overall-rating', 'Overall rating & review volume', 'pass', 85, `${summary} is solid independent evidence.`);
+    return result('overall-rating', 'Rating & review count', 'pass', 85, `${summary} — a solid track record.`);
   }
   if (averageRating >= 3.8 && totalReviewCount >= 100) {
-    return result('overall-rating', 'Overall rating & review volume', 'watch', 65, `${summary} is a moderate independent signal.`);
+    return result('overall-rating', 'Rating & review count', 'watch', 65, `${summary} — a decent track record, though not outstanding.`);
   }
   if (averageRating < 3.0 && totalReviewCount >= 50) {
-    return result('overall-rating', 'Overall rating & review volume', 'risk', 30, `${summary} is a weak independent signal.`);
+    return result('overall-rating', 'Rating & review count', 'risk', 30, `${summary} — a below-average track record worth noting.`);
   }
-  return result('overall-rating', 'Overall rating & review volume', 'watch', 60, `${summary} is a limited independent signal.`);
+  return result('overall-rating', 'Rating & review count', 'watch', 60, `${summary} — not quite enough here yet to call this a strong or weak track record.`);
+}
+
+// The single most concrete, actionable insight TrustLens can offer that
+// competitors don't: a genuinely high-priced product with very few reviews
+// is suspicious in a way a cheap impulse-buy product with few reviews just
+// isn't — buyers of expensive items are exactly as likely (often more so)
+// to leave a review as buyers of cheap ones, so a thin review count on an
+// expensive listing is a real anomaly, not just "a new product." Currency-
+// aware thresholds since "high-priced" means very different things in ₹ vs
+// $ vs £/€; unrecognized currencies fall back to a conservative USD-scale
+// default rather than silently skipping the check.
+const HIGH_PRICE_THRESHOLDS: Record<string, number> = {
+  '₹': 3000,
+  '$': 40,
+  '£': 32,
+  '€': 35,
+  '¥': 4500,
+};
+const DEFAULT_HIGH_PRICE_THRESHOLD = 40;
+const VERY_THIN_REVIEW_COUNT = 50;
+const SOMEWHAT_THIN_REVIEW_COUNT = 150;
+
+function checkPriceVsReviewCount(page: ScrapedAmazonPage): RuleCheckResult {
+  const { price, priceCurrency, totalReviewCount } = page;
+  if (price === null || !priceCurrency || !totalReviewCount) {
+    return result('price-vs-reviews', 'Reviews vs. price', 'unknown', 60, "TrustLens couldn't read this product's price to compare against its review count.");
+  }
+
+  const threshold = HIGH_PRICE_THRESHOLDS[priceCurrency] ?? DEFAULT_HIGH_PRICE_THRESHOLD;
+  const isHighPriced = price >= threshold;
+  const formattedPrice = `${priceCurrency}${price.toLocaleString()}`;
+
+  if (!isHighPriced) {
+    return result('price-vs-reviews', 'Reviews vs. price', 'pass', 80, `At ${formattedPrice}, this is a lower-priced item — a thin review count here isn't unusual the way it would be for something expensive.`);
+  }
+
+  if (totalReviewCount < VERY_THIN_REVIEW_COUNT) {
+    return result(
+      'price-vs-reviews',
+      'Reviews vs. price',
+      'risk',
+      25,
+      `Only ${totalReviewCount.toLocaleString()} review${totalReviewCount === 1 ? '' : 's'} for a ${formattedPrice} product — unusually thin for this price. Treat with caution.`,
+    );
+  }
+
+  if (totalReviewCount < SOMEWHAT_THIN_REVIEW_COUNT) {
+    return result(
+      'price-vs-reviews',
+      'Reviews vs. price',
+      'watch',
+      60,
+      `${totalReviewCount.toLocaleString()} reviews for a ${formattedPrice} product is on the lighter side for this price range.`,
+    );
+  }
+
+  return result('price-vs-reviews', 'Reviews vs. price', 'pass', 88, `${totalReviewCount.toLocaleString()} reviews for a ${formattedPrice} product is a reasonable volume for this price range.`);
 }
 
 const CHECK_WEIGHTS: Partial<Record<string, number>> = {
   // Population-level evidence outweighs any single sample-derived check —
   // it can't be skewed by which 13-45 reviews Amazon happened to surface.
   // The histogram carries the most weight since it's the full-resolution
-  // star-by-star breakdown; overall-rating is the coarser (but more often
-  // available) average+count fallback.
+  // star-by-star breakdown; overall-rating and price-vs-reviews are coarser
+  // (but often available, and price-vs-reviews is a genuinely concrete
+  // finding on its own) population-level signals.
   'histogram-shape': 3,
   'overall-rating': 2,
+  'price-vs-reviews': 2,
 };
 
 function checkWeight(id: string): number {

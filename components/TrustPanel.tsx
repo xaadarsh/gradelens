@@ -11,6 +11,13 @@ interface TrustPanelProps {
   page: ScrapedAmazonPage;
 }
 
+// Item 8: the footer disclaimer used to be the full 3-5 sentence
+// explanation every time — five lines of legalese nobody reads. This one
+// line is what's always visible; the full analysis.disclaimer text (still
+// population-honest, see lib/statistical-engine.ts) lives behind the (i)
+// toggle for anyone who actually wants the "how this works" detail.
+const SHORT_DISCLAIMER = 'Pattern-based signals, not proof.';
+
 // Animation sequencing (ms) — mirrors the durations declared in
 // trustlens.css (tl-panel-in, tl-row-in). Computed here rather than
 // hardcoded because the medallion's hero sequence is supposed to start only
@@ -68,6 +75,10 @@ export function TrustPanel({ page }: TrustPanelProps) {
   // Which signal rows are tap-expanded to show their plain-language "why" —
   // a Set so more than one can be open at once, independent of row order.
   const [expandedChecks, setExpandedChecks] = useState<Set<string>>(() => new Set());
+  // Item 8: disclaimer collapsed to one line by default, full "how this
+  // works" explanation tucked behind an (i) toggle instead of always
+  // occupying 5 lines nobody reads.
+  const [showFullDisclaimer, setShowFullDisclaimer] = useState(false);
 
   function toggleCheckExpanded(id: string) {
     setExpandedChecks((prev) => {
@@ -194,7 +205,12 @@ export function TrustPanel({ page }: TrustPanelProps) {
       </div>
 
       <div className="trustlens-summary-row">
-        <div className="trustlens-medallion" data-grade={analysis.grade} data-medallion-phase={medallionPhase}>
+        <div
+          className="trustlens-medallion"
+          data-grade={analysis.grade}
+          data-medallion-phase={medallionPhase}
+          data-confidence={analysis.confidence}
+        >
           <span className="trustlens-medallion-letter">
             {medallionPhase === 'thinking' ? thinkingGlyph : medallionGlyph(analysis.grade)}
           </span>
@@ -238,7 +254,7 @@ export function TrustPanel({ page }: TrustPanelProps) {
                 </div>
                 {!isShortfall ? (
                   <span className="trustlens-check-right">
-                    <span className="trustlens-check-chip">{check.status}</span>
+                    <span className="trustlens-check-chip">{statusLabel(check.status)}</span>
                     <ChevronIcon className="trustlens-check-chevron" />
                   </span>
                 ) : null}
@@ -268,7 +284,19 @@ export function TrustPanel({ page }: TrustPanelProps) {
       <hr className="trustlens-divider" />
 
       <footer className="trustlens-footer">
-        <p className="trustlens-disclaimer">{analysis.disclaimer}</p>
+        <div className="trustlens-disclaimer-row">
+          <p className="trustlens-disclaimer">{SHORT_DISCLAIMER}</p>
+          <button
+            type="button"
+            className="trustlens-disclaimer-info"
+            aria-expanded={showFullDisclaimer}
+            aria-label="How this works"
+            onClick={() => setShowFullDisclaimer((prev) => !prev)}
+          >
+            ⓘ
+          </button>
+        </div>
+        {showFullDisclaimer ? <p className="trustlens-disclaimer-full">{analysis.disclaimer}</p> : null}
         <button
           className="trustlens-settings-link"
           onClick={() => browser.runtime.sendMessage({ type: 'trustlens:open-options' }).catch(() => undefined)}
@@ -315,7 +343,7 @@ function renderDeepDiveBody(text: string) {
 
   return (
     <div className="trustlens-deep-dive">
-      <p className="trustlens-deepdive-verdict">{renderEmphasis(verdictLine, 'neutral')}</p>
+      <p className="trustlens-deepdive-verdict">{renderEmphasis(truncateWords(verdictLine, HEADLINE_MAX_WORDS), 'neutral')}</p>
       {bulletLines.length > 0 ? (
         <ul className="trustlens-deepdive-bullets">
           {bulletLines.map((line, index) => {
@@ -332,6 +360,20 @@ function renderDeepDiveBody(text: string) {
   );
 }
 
+// Item 6: the prompt already asks for a <=10-word headline, but this is the
+// actual enforcement — a rendering-side cap means a model that ignores the
+// instruction still can't produce the 3-line serif wall this was meant to
+// fix. Small slack over the requested 10 (12) before an ellipsis kicks in,
+// consistent with how the rest of this file treats prompt limits as
+// targets the model aims for, not hard contracts it always honors.
+const HEADLINE_MAX_WORDS = 12;
+
+function truncateWords(text: string, maxWords: number): string {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return text;
+  return `${words.slice(0, maxWords).join(' ')}…`;
+}
+
 type EmphasisSentiment = 'pass' | 'risk' | 'neutral';
 
 function bulletSentiment(line: string): EmphasisSentiment {
@@ -344,14 +386,29 @@ function bulletSentiment(line: string): EmphasisSentiment {
 // any surviving ** pair is well-formed) and wraps each in a sentiment-tinted
 // <mark> — everything else renders as plain text, so a bullet with zero or
 // multiple emphasis spans still renders correctly either way.
+//
+// Item 5: the prompt asks for a 1-3 word span, but this is the actual
+// enforcement — if the model emphasizes a longer phrase anyway, only the
+// first 3 words get the tinted-bold treatment; the rest of that phrase
+// still renders, just as plain text. Without this cap a model that ignores
+// the instruction can boxed-highlight most of a bullet, which is exactly
+// the "40% of the text is boxed, nothing stands out" problem being fixed.
+const EMPHASIS_MAX_WORDS = 3;
+
 function renderEmphasis(line: string, sentiment: EmphasisSentiment) {
   const parts = line.split(/(\*\*.+?\*\*)/g);
   return parts.map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      const words = part.slice(2, -2).split(/\s+/).filter(Boolean);
+      const emphasized = words.slice(0, EMPHASIS_MAX_WORDS).join(' ');
+      const overflow = words.slice(EMPHASIS_MAX_WORDS).join(' ');
       return (
-        <mark key={index} className="trustlens-emph" data-sentiment={sentiment}>
-          {part.slice(2, -2)}
-        </mark>
+        <span key={index}>
+          <mark className="trustlens-emph" data-sentiment={sentiment}>
+            {emphasized}
+          </mark>
+          {overflow ? ` ${overflow}` : ''}
+        </span>
       );
     }
     return <span key={index}>{part}</span>;
@@ -366,6 +423,22 @@ function ctaText(isPro: boolean, remainingTrials: number): string {
 
 function medallionGlyph(grade: TrustGrade): string {
   return grade === 'Insufficient data' ? '–' : grade;
+}
+
+// Item 2: plain-language status text for the signal-row chip — "PASS"/
+// "WATCH" read like a CI pipeline, not something a shopper glancing at a
+// browser extension expects to parse. Short enough to still fit the pill.
+function statusLabel(status: CheckStatus): string {
+  switch (status) {
+    case 'pass':
+      return 'Looks fine';
+    case 'watch':
+      return 'Worth a look';
+    case 'risk':
+      return 'Red flag';
+    case 'unknown':
+      return 'Unclear';
+  }
 }
 
 // Population-first framing, matching how the grade is actually computed now

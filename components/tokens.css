@@ -26,6 +26,13 @@
   --pass: #3D6B4A;
   --warn: #B07A2E;
   --risk: #B0503A;
+  /* Deliberately a COOL blue-grey, not another warm brown-grey like
+     --text-secondary — used only for the deep-dive's neutral/observation
+     emphasis tint (🔍⭐ sentiment). Sharing --text-secondary's warm hue
+     there made the sage (--pass) and slate tints read as "the same grey
+     box" at a glance; a cool slate stands apart from both the warm sage
+     and warm rust immediately, at the same low-key intensity. */
+  --slate: #56707D;
 
   /* Secondary elevation tone for page canvas vs. the cards resting on it —
      not a spec'd token by itself, kept a hair off --card so grouped

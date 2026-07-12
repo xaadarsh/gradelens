@@ -245,6 +245,23 @@ function isProductPage(): boolean {
 const selectors = {
   title: ['#productTitle'],
   asin: ['#ASIN', 'input[name="ASIN"]'],
+  // .a-offscreen carries the full formatted price ("₹6,499.00", "$49.99")
+  // as accessible text regardless of how the visible price is split into
+  // separate whole/fraction/symbol spans. #corePrice_feature_div is the
+  // confirmed-clean current-price container (verified live); deliberately
+  // NOT using #corePriceDisplay_desktop_feature_div as a selector root — on
+  // a live page it matched a blank decoy .a-offscreen span before the
+  // crossed-out M.R.P. price, never the actual selling price. The broad
+  // `.a-price .a-offscreen` fallback is for page variants without a
+  // corePrice widget; its first match was confirmed correct too, just less
+  // targeted. Trailing entries are older/regional layout fallbacks.
+  price: [
+    '#corePrice_feature_div .a-price .a-offscreen',
+    '.a-price .a-offscreen',
+    '#priceblock_dealprice',
+    '#priceblock_ourprice',
+    '#priceblock_saleprice',
+  ],
   averageRating: ['[data-hook="average-star-rating"]', '#averageCustomerReviews .a-icon-alt', '[data-hook="rating-out-of-text"]'],
   totalReviewCount: ['[data-hook="total-review-count"]', '#acrCustomerReviewText', '#averageCustomerReviews_feature_div #acrCustomerReviewText'],
   reviewCards: ['[data-hook="review"]', '[id^="customer_review-"]', '.review[data-hook]'],
@@ -349,6 +366,7 @@ function scrapeAmazonPage(root: Document): ScrapedAmazonPage & PageAnchors {
   const asinElement = queryFirst('asin', root) as HTMLInputElement | null;
   const reviewCards = queryAll('reviewCards', root).slice(0, 30);
   const totalReviewCount = integerFromText(text(queryFirst('totalReviewCount', root)));
+  const parsedPrice = parsePrice(text(queryFirst('price', root)));
 
   const page = {
     asin: asinElement?.value || text(asinElement) || asinFromUrl(),
@@ -363,6 +381,8 @@ function scrapeAmazonPage(root: Document): ScrapedAmazonPage & PageAnchors {
     mountAnchor: queryFirst('mountAnchor', root),
     reviewsScanned: reviewCards.length,
     totalReviews: totalReviewCount ?? 0,
+    price: parsedPrice?.amount ?? null,
+    priceCurrency: parsedPrice?.currency ?? null,
   };
 
   if (!page.reviews.length) {
@@ -441,6 +461,18 @@ function numberFromText(value: string): number | null {
 function integerFromText(value: string): number | null {
   const match = value.replace(/,/g, '').match(/(\d+)/);
   return match ? Number(match[1]) : null;
+}
+
+// Reads a currency symbol + numeric amount out of Amazon's formatted price
+// text (e.g. "₹6,499.00", "$49.99", "£35.00") — used by the price-vs-
+// review-count sanity check (item 3). Thousands separators are stripped
+// before parsing; unrecognized formats (no leading currency symbol) return
+// null so the check degrades to "unknown" rather than misreading garbage.
+function parsePrice(value: string): { amount: number; currency: string } | null {
+  const match = value.match(/([₹$£€¥])\s?([\d,]+(?:\.\d+)?)/);
+  if (!match) return null;
+  const amount = Number(match[2].replace(/,/g, ''));
+  return Number.isNaN(amount) ? null : { amount, currency: match[1] };
 }
 
 function asinFromUrl(): string | null {

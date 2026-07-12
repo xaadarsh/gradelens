@@ -99,7 +99,18 @@
   overflow: hidden;
   position: relative;
   transform: scale(0);
+  transition: background var(--dur) var(--ease-out);
   width: 44px;
+}
+
+/* Item 4: a bold solid-black "B" looks exactly as authoritative as a solid-
+   black "A" — the medallion's visual weight should match how much the
+   grade can actually be leaned on. Softened fill (not opacity — opacity is
+   already the phase-choreography property, see the four-act sequence
+   above, so touching it here would fight that animation) reads as a
+   visibly less certain badge without breaking the entrance/idle timeline. */
+.trustlens-medallion[data-confidence='Low'] {
+  background: color-mix(in srgb, var(--ink) 50%, var(--page));
 }
 
 .trustlens-medallion::after {
@@ -361,16 +372,19 @@
 }
 
 /* Status chip: tinted background derived straight from the status token,
-   text always full ink — never a colored/pastel text-on-dark combo. */
+   text always full ink — never a colored/pastel text-on-dark combo. Item 2:
+   text is now short human phrases ("Looks fine", "Worth a look") rather
+   than a status enum, so this deliberately drops the all-caps treatment —
+   ALL-CAPS "LOOKS FINE" still reads like a build-pipeline badge; sentence
+   case is what makes it read as something a person wrote. */
 .trustlens-check-chip {
   border-radius: var(--radius-pill);
   color: var(--ink);
   flex-shrink: 0;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  padding: 2px 7px;
-  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  white-space: nowrap;
 }
 
 .trustlens-check[data-status='pass'] .trustlens-check-chip {
@@ -502,27 +516,35 @@
   line-height: 1.55;
 }
 
-/* Emphasis spans: bold + a soft sentiment-tinted background, sized to the
-   phrase only — never the whole sentence. Colour-coded to the bullet's own
-   sentiment symbol (✅ sage / --pass, ⚠️ rust / --risk, 🔍⭐ slate /
-   --text-secondary), matching the same tint language the signal-check chips
-   already use elsewhere in this panel. Subtle: 16% mix, not neon. */
+/* Emphasis spans: 1-3 words only (capped in both the prompt and the
+   renderEmphasis function — see TrustPanel.tsx), each with a sentiment-
+   tinted background AND a sentiment-tinted TEXT colour. Colour comes from
+   two channels, not just a light background wash, specifically because a
+   single pale tint over cream reads as "the same grey box" regardless of
+   hue at low opacity — tinting the bold text itself toward the same hue
+   (mixed with --ink for contrast, not the raw token) makes sage (✅
+   --pass), rust (⚠️ --risk), and slate (🔍⭐ --slate) immediately
+   distinguishable at a glance. Lighter than the previous pass: 14% mix
+   background (was 18-20%) and 600 weight (was 700) — softer, not louder. */
 .trustlens-emph {
   border-radius: 4px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 0 3px;
 }
 
 .trustlens-emph[data-sentiment='pass'] {
-  background: color-mix(in srgb, var(--pass) 18%, transparent);
+  background: color-mix(in srgb, var(--pass) 14%, transparent);
+  color: color-mix(in srgb, var(--pass) 75%, var(--ink));
 }
 
 .trustlens-emph[data-sentiment='risk'] {
-  background: color-mix(in srgb, var(--risk) 18%, transparent);
+  background: color-mix(in srgb, var(--risk) 14%, transparent);
+  color: color-mix(in srgb, var(--risk) 75%, var(--ink));
 }
 
 .trustlens-emph[data-sentiment='neutral'] {
-  background: color-mix(in srgb, var(--text-secondary) 20%, transparent);
+  background: color-mix(in srgb, var(--slate) 14%, transparent);
+  color: color-mix(in srgb, var(--slate) 75%, var(--ink));
 }
 
 /* Footer */
@@ -532,11 +554,46 @@
   gap: 3px;
 }
 
+/* Item 8: one line always visible, not five — the full explanation
+   (analysis.disclaimer) is still shown in full, just behind the (i) toggle
+   instead of permanently occupying footer space nobody reads. */
+.trustlens-disclaimer-row {
+  align-items: baseline;
+  display: flex;
+  gap: 5px;
+}
+
 .trustlens-disclaimer {
   color: var(--text-secondary);
+  flex: 1;
   font-size: 10px;
   line-height: 1.3;
   margin: 0;
+}
+
+.trustlens-disclaimer-info {
+  background: none;
+  border: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.trustlens-disclaimer-info:hover,
+.trustlens-disclaimer-info[aria-expanded='true'] {
+  color: var(--ink);
+}
+
+.trustlens-disclaimer-full {
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.4;
+  margin: 0;
+  animation: tl-row-in 180ms var(--ease-out) both;
 }
 
 .trustlens-settings-link {
