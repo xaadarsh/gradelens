@@ -45,7 +45,7 @@ async function main() {
   try {
     await page.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await clickThroughInterstitial(page);
-    const panel = page.locator('#trustlens-root .trustlens-panel');
+    const panel = page.locator('#gradelens-root .gradelens-panel');
     await panel.waitFor({ state: 'visible', timeout: 30000 });
     await panel.scrollIntoViewIfNeeded();
 
@@ -56,7 +56,7 @@ async function main() {
     // (inset shadows are geometrically guaranteed to never render outside
     // the element's own border box, regardless of blur/spread values).
     const structural = await page.evaluate(() => {
-      const m = document.querySelector('.trustlens-medallion');
+      const m = document.querySelector('.gradelens-medallion');
       const cs = getComputedStyle(m);
       return { overflow: cs.overflow, boxShadow: cs.boxShadow };
     });
@@ -71,9 +71,9 @@ async function main() {
     for (const t of checkpoints) {
       if (t > 0) await page.waitForTimeout(700);
       const s = await page.evaluate(() => {
-        const m = document.querySelector('.trustlens-medallion');
+        const m = document.querySelector('.gradelens-medallion');
         const mBox = m.getBoundingClientRect();
-        const title = document.querySelector('.trustlens-title');
+        const title = document.querySelector('.gradelens-title');
         const titleBox = title.getBoundingClientRect();
         const mCs = getComputedStyle(m);
         return {
@@ -96,8 +96,8 @@ async function main() {
     // Tight crop right around the medallion + title/subtitle boundary —
     // the exact zone that was bleeding before.
     const closeup = await page.evaluate(() => {
-      const m = document.querySelector('.trustlens-medallion');
-      const row = document.querySelector('.trustlens-summary-row');
+      const m = document.querySelector('.gradelens-medallion');
+      const row = document.querySelector('.gradelens-summary-row');
       const mBox = m.getBoundingClientRect();
       const rowBox = row.getBoundingClientRect();
       return { x: mBox.x - 10, y: mBox.y - 10, width: rowBox.width + 20, height: mBox.height + 20 };

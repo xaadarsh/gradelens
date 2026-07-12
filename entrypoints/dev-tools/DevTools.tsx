@@ -39,7 +39,7 @@ function DevTools() {
   return (
     <main className="dev-tools-shell">
       <div className="dev-tools-inner">
-        <h1>TrustLens Dev Tools</h1>
+        <h1>GradeLens Dev Tools</h1>
         <p className="dev-tools-note">
           Never referenced in manifest.json (unlisted page) and excluded from production builds via
           filterEntrypoints — reachable only by loading this page's path directly during development.

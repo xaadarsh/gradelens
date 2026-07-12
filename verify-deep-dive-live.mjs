@@ -21,7 +21,7 @@ if (!apiKey) {
 
 // Kept in exact sync with lib/deep-analysis.ts — copy-pasted, not imported,
 // since this is a plain Node script outside the extension's TS build.
-const SYSTEM_PROMPT = `You are TrustLens, a review-pattern assistant. Use cautious, pattern/confidence language only. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof.
+const SYSTEM_PROMPT = `You are GradeLens, a review-pattern assistant. Use cautious, pattern/confidence language only. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof.
 
 Output a "quick verdict card", never an essay:
 Line 1: one short sentence — the bottom-line verdict, nothing else. Plain text, no emphasis markers on this line.

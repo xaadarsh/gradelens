@@ -45,7 +45,7 @@ async function main() {
   page.on('console', (msg) => {
     const line = `[${msg.type()}] ${msg.text()}`;
     consoleLog.push(line);
-    if (msg.text().includes('[TrustLens]')) console.log(line);
+    if (msg.text().includes('[GradeLens]')) console.log(line);
   });
 
   try {
@@ -54,20 +54,20 @@ async function main() {
     await clickThroughInterstitial(page);
     await page.waitForTimeout(3000);
 
-    const panel = page.locator('#trustlens-root .trustlens-panel');
+    const panel = page.locator('#gradelens-root .gradelens-panel');
     await panel.waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
 
-    const summaryAfterMount = (await page.locator('.trustlens-summary span').first().textContent().catch(() => '')) ?? '';
+    const summaryAfterMount = (await page.locator('.gradelens-summary span').first().textContent().catch(() => '')) ?? '';
     console.log(`Summary right after mount: "${summaryAfterMount.trim()}"`);
     await page.screenshot({ path: path.join(VERIFICATION_DIR, 'review-scan-before.png') });
 
     console.log('Waiting up to ~35s for the additional-page review scan to complete...');
     await page.waitForTimeout(35000);
 
-    const summaryFinal = (await page.locator('.trustlens-summary span').first().textContent().catch(() => '')) ?? '';
+    const summaryFinal = (await page.locator('.gradelens-summary span').first().textContent().catch(() => '')) ?? '';
     console.log(`Summary after scan window: "${summaryFinal.trim()}"`);
 
-    const checklistTexts = await page.locator('.trustlens-check p').allTextContents();
+    const checklistTexts = await page.locator('.gradelens-check p').allTextContents();
     console.log('Signal checklist detail lines:');
     for (const t of checklistTexts) console.log(`  - ${t}`);
 

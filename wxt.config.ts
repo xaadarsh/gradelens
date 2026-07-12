@@ -12,8 +12,8 @@ export default defineConfig({
   // writes output, nothing more.
   webExt: { disabled: true },
   manifest: {
-    name: 'TrustLens',
-    short_name: 'TrustLens',
+    name: 'GradeLens',
+    short_name: 'GradeLens',
     description: 'Pattern-based Amazon review confidence checks.',
     icons: {
       16: '/icon/16.png',

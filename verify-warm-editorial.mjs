@@ -177,18 +177,18 @@ async function main() {
       await amazonDark.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await clickThroughInterstitial(amazonDark);
       await amazonDark.waitForTimeout(4000);
-      const panel = amazonDark.locator('#trustlens-root .trustlens-panel');
+      const panel = amazonDark.locator('#gradelens-root .gradelens-panel');
       await panel.waitFor({ state: 'visible', timeout: 15000 });
       panelDarkVisible = true;
       const panelReport = await amazonDark.evaluate(`(() => {
         ${CONTRAST_HELPERS}
-        const panel = document.querySelector('.trustlens-panel');
+        const panel = document.querySelector('.gradelens-panel');
         const panelCs = getComputedStyle(panel);
-        const medallion = document.querySelector('.trustlens-medallion');
+        const medallion = document.querySelector('.gradelens-medallion');
         const medallionCs = getComputedStyle(medallion);
-        const letter = document.querySelector('.trustlens-medallion-letter');
+        const letter = document.querySelector('.gradelens-medallion-letter');
         const letterCs = getComputedStyle(letter);
-        const title = document.querySelector('.trustlens-title');
+        const title = document.querySelector('.gradelens-title');
         const titleCs = getComputedStyle(title);
         const cardBg = parseRgb(panelCs.backgroundColor);
         const medallionBg = parseRgb(medallionCs.backgroundColor);
@@ -232,18 +232,18 @@ async function main() {
       await amazonLight.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await clickThroughInterstitial(amazonLight);
       await amazonLight.waitForTimeout(4000);
-      const panel = amazonLight.locator('#trustlens-root .trustlens-panel');
+      const panel = amazonLight.locator('#gradelens-root .gradelens-panel');
       await panel.waitFor({ state: 'visible', timeout: 15000 });
       panelLightVisible = true;
       const panelReport = await amazonLight.evaluate(`(() => {
         ${CONTRAST_HELPERS}
-        const panel = document.querySelector('.trustlens-panel');
+        const panel = document.querySelector('.gradelens-panel');
         const panelCs = getComputedStyle(panel);
-        const medallion = document.querySelector('.trustlens-medallion');
+        const medallion = document.querySelector('.gradelens-medallion');
         const medallionCs = getComputedStyle(medallion);
-        const letter = document.querySelector('.trustlens-medallion-letter');
+        const letter = document.querySelector('.gradelens-medallion-letter');
         const letterCs = getComputedStyle(letter);
-        const title = document.querySelector('.trustlens-title');
+        const title = document.querySelector('.gradelens-title');
         const titleCs = getComputedStyle(title);
         const bodyBg = parseRgb(getComputedStyle(document.body).backgroundColor);
         const cardBg = parseRgb(panelCs.backgroundColor);

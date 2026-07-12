@@ -29,8 +29,8 @@ async function clickThroughInterstitial(page) {
 }
 
 function captureState() {
-  const medallion = document.querySelector('.trustlens-medallion');
-  const letter = document.querySelector('.trustlens-medallion-letter');
+  const medallion = document.querySelector('.gradelens-medallion');
+  const letter = document.querySelector('.gradelens-medallion-letter');
   const cs = (el) => (el ? getComputedStyle(el) : null);
   const mCs = cs(medallion);
   const lCs = cs(letter);
@@ -53,7 +53,7 @@ async function runSequence(context, label, reducedMotion, checkpoints) {
   await page.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await clickThroughInterstitial(page);
 
-  const panel = page.locator('#trustlens-root .trustlens-panel');
+  const panel = page.locator('#gradelens-root .gradelens-panel');
   await panel.waitFor({ state: 'visible', timeout: 20000 });
   await panel.scrollIntoViewIfNeeded();
   const t0 = Date.now();

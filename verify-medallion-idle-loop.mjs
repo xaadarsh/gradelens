@@ -42,14 +42,14 @@ async function main() {
   try {
     await page.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await clickThroughInterstitial(page);
-    const panel = page.locator('#trustlens-root .trustlens-panel');
+    const panel = page.locator('#gradelens-root .gradelens-panel');
     await panel.waitFor({ state: 'visible', timeout: 30000 });
     await panel.scrollIntoViewIfNeeded();
 
     console.log('Panel visible. Waiting for the reveal sequence to finish (2.5s)...');
     await page.waitForTimeout(2500);
 
-    const phase = await page.evaluate(() => document.querySelector('.trustlens-medallion').getAttribute('data-medallion-phase'));
+    const phase = await page.evaluate(() => document.querySelector('.gradelens-medallion').getAttribute('data-medallion-phase'));
     console.log('Phase after 2.5s:', phase);
 
     console.log('\n=== Sampling idle loop for 9s ===');
@@ -60,7 +60,7 @@ async function main() {
       const wait = Math.max(0, target - (Date.now() - t0));
       if (wait > 0) await page.waitForTimeout(wait);
       const state = await page.evaluate(() => {
-        const m = document.querySelector('.trustlens-medallion');
+        const m = document.querySelector('.gradelens-medallion');
         const cs = getComputedStyle(m);
         const beforeCs = getComputedStyle(m, '::before');
         return {

@@ -51,7 +51,7 @@ async function main() {
       const startScroll = await page.evaluate(() => window.scrollY);
       console.log(`Start scrollY: ${startScroll}`);
 
-      const panel = page.locator('#trustlens-root .trustlens-panel');
+      const panel = page.locator('#gradelens-root .gradelens-panel');
       await panel.waitFor({ state: 'visible', timeout: 20000 }).catch(() => console.log('(panel did not appear — continuing scroll check anyway)'));
 
       // Sample scrollY across the full lazy-load watch window (9s timeout

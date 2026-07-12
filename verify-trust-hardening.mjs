@@ -56,13 +56,13 @@ async function verifyProduct(context, product) {
   const consoleErrors = [];
   const pageErrors = [];
   // Amazon's own page is noisy (ad-beacon 404s, its internal SushiLogger/
-  // NoriLogger telemetry) regardless of whether TrustLens is installed at
-  // all — item 4 cares about errors TrustLens is responsible for, not
+  // NoriLogger telemetry) regardless of whether GradeLens is installed at
+  // all — item 4 cares about errors GradeLens is responsible for, not
   // pre-existing Amazon page noise, so those are filtered from the signal.
   const AMAZON_NATIVE_NOISE = /SushiLogger|NoriLogger|Failed to load resource/i;
   page.on('console', (msg) => {
     if (msg.type() === 'error' && !AMAZON_NATIVE_NOISE.test(msg.text())) consoleErrors.push(msg.text());
-    if (msg.text().includes('[TrustLens]')) console.log(`[console] ${msg.text()}`);
+    if (msg.text().includes('[GradeLens]')) console.log(`[console] ${msg.text()}`);
   });
   page.on('pageerror', (err) => pageErrors.push(err.message));
 
@@ -72,45 +72,45 @@ async function verifyProduct(context, product) {
     await page.goto(product.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await clickThroughInterstitial(page);
 
-    const panel = page.locator('#trustlens-root .trustlens-panel');
+    const panel = page.locator('#gradelens-root .gradelens-panel');
     await panel.waitFor({ state: 'visible', timeout: 20000 });
     result.panelMounted = true;
     await page.waitForTimeout(2500); // let the medallion sequence + any live re-grade settle
 
     // --- item 0: disclaimer copy ---
-    const disclaimer = (await page.locator('.trustlens-disclaimer').textContent().catch(() => '')) ?? '';
+    const disclaimer = (await page.locator('.gradelens-disclaimer').textContent().catch(() => '')) ?? '';
     result.disclaimer = disclaimer.trim();
     result.disclaimerApologizes = /too few individual reviews could be read/i.test(disclaimer);
     result.disclaimerIsPopulationSourced = /full public rating history/i.test(disclaimer);
 
     // --- item 1: confidence chip ---
-    const confidenceChip = page.locator('.trustlens-confidence-chip');
+    const confidenceChip = page.locator('.gradelens-confidence-chip');
     result.hasConfidenceChip = (await confidenceChip.count()) > 0;
     result.confidenceText = result.hasConfidenceChip ? (await confidenceChip.textContent())?.trim() : null;
     result.confidenceLevel = result.hasConfidenceChip ? await confidenceChip.getAttribute('data-level') : null;
 
     // --- item 3: verdict line ---
-    const verdict = page.locator('.trustlens-verdict');
+    const verdict = page.locator('.gradelens-verdict');
     result.hasVerdict = (await verdict.count()) > 0;
     result.verdictText = result.hasVerdict ? (await verdict.textContent())?.trim() : null;
 
     // --- grade / subtitle for context ---
-    result.grade = (await page.locator('.trustlens-medallion-letter').textContent().catch(() => ''))?.trim();
-    result.subtitle = (await page.locator('.trustlens-subtitle').textContent().catch(() => ''))?.trim();
+    result.grade = (await page.locator('.gradelens-medallion-letter').textContent().catch(() => ''))?.trim();
+    result.subtitle = (await page.locator('.gradelens-subtitle').textContent().catch(() => ''))?.trim();
 
     await panel.screenshot({ path: path.join(VERIFICATION_DIR, `hardening-${product.key}-panel.png`) });
 
     // --- item 2: why-expansion ---
-    const firstCheckRow = page.locator('.trustlens-check-row').first();
+    const firstCheckRow = page.locator('.gradelens-check-row').first();
     if ((await firstCheckRow.count()) > 0) {
       await firstCheckRow.click();
       await page.waitForTimeout(300);
-      const detail = page.locator('.trustlens-check-detail').first();
+      const detail = page.locator('.gradelens-check-detail').first();
       result.expandShowsDetail = (await detail.count()) > 0 && ((await detail.textContent())?.trim().length ?? 0) > 0;
       result.expandDetailSample = (await detail.textContent().catch(() => ''))?.trim().slice(0, 100);
       await firstCheckRow.click();
       await page.waitForTimeout(300);
-      result.collapseWorks = (await page.locator('.trustlens-check-detail').count()) === 0;
+      result.collapseWorks = (await page.locator('.gradelens-check-detail').count()) === 0;
     } else {
       result.expandShowsDetail = false;
       result.collapseWorks = false;
@@ -135,14 +135,14 @@ async function verifyProduct(context, product) {
     await panel.waitFor({ state: 'visible', timeout: 20000 });
     await page.waitForTimeout(2500);
 
-    const deepDiveBtn = page.locator('.trustlens-button');
+    const deepDiveBtn = page.locator('.gradelens-button');
     if ((await deepDiveBtn.count()) > 0 && !(await deepDiveBtn.isDisabled())) {
       await deepDiveBtn.click();
-      await page.locator('.trustlens-deepdive-verdict').waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
-      const verdictLine = page.locator('.trustlens-deepdive-verdict');
+      await page.locator('.gradelens-deepdive-verdict').waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+      const verdictLine = page.locator('.gradelens-deepdive-verdict');
       result.deepDiveVerdict = (await verdictLine.textContent().catch(() => ''))?.trim() ?? null;
 
-      const emphSpans = page.locator('.trustlens-emph');
+      const emphSpans = page.locator('.gradelens-emph');
       const emphCount = await emphSpans.count();
       result.deepDiveEmphCount = emphCount;
       const sentiments = [];
@@ -157,7 +157,7 @@ async function verifyProduct(context, product) {
       result.deepDiveEmphSpans = sentiments;
       result.deepDiveEmphTinted = sentiments.length > 0 && sentiments.every((s) => s.bg && s.bg !== 'rgba(0, 0, 0, 0)' && s.bg !== 'transparent');
       // No raw ** markers should ever reach the DOM as literal text.
-      const bodyText = (await page.locator('.trustlens-deep-dive').textContent().catch(() => '')) ?? '';
+      const bodyText = (await page.locator('.gradelens-deep-dive').textContent().catch(() => '')) ?? '';
       result.deepDiveNoRawAsterisks = !bodyText.includes('**');
 
       await panel.screenshot({ path: path.join(VERIFICATION_DIR, `hardening-${product.key}-deepdive.png`) });
@@ -211,10 +211,10 @@ async function verifyDarkModeStaysLightLocked(context, extensionId) {
   const page = await context.newPage();
   await page.goto('https://www.amazon.in/dp/B08RQJKF6D', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await clickThroughInterstitial(page);
-  const panel = page.locator('#trustlens-root .trustlens-panel');
+  const panel = page.locator('#gradelens-root .gradelens-panel');
   await panel.waitFor({ state: 'visible', timeout: 20000 });
   await page.waitForTimeout(2000);
-  const cardBg = await page.locator('.trustlens-panel').evaluate((node) => getComputedStyle(node).backgroundColor);
+  const cardBg = await page.locator('.gradelens-panel').evaluate((node) => getComputedStyle(node).backgroundColor);
   await panel.screenshot({ path: path.join(VERIFICATION_DIR, 'hardening-panel-with-settings-dark.png') });
   await page.close();
 
@@ -253,9 +253,9 @@ async function main() {
       const setupPage = await context.newPage();
       await setupPage.goto(`chrome-extension://${extensionId}/options.html`, { waitUntil: 'domcontentloaded' });
       await setupPage.evaluate(async () => {
-        const stored = await chrome.storage.local.get('trustlens.settings');
-        const current = stored['trustlens.settings'] ?? {};
-        await chrome.storage.local.set({ 'trustlens.settings': { ...current, provider: 'gemini', geminiKey: 'mock-key-for-verification' } });
+        const stored = await chrome.storage.local.get('gradelens.settings');
+        const current = stored['gradelens.settings'] ?? {};
+        await chrome.storage.local.set({ 'gradelens.settings': { ...current, provider: 'gemini', geminiKey: 'mock-key-for-verification' } });
       });
       console.log('Mock Gemini key set via options.html storage.');
       await setupPage.close();

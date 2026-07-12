@@ -1,3 +1,4 @@
+import { ensureStorageMigrated } from './storage-migration';
 import type { TrustGrade } from './types';
 
 export interface HistoryEntry {
@@ -8,7 +9,7 @@ export interface HistoryEntry {
   date: number;
 }
 
-const HISTORY_KEY = 'trustlens_history';
+const HISTORY_KEY = 'gradelens_history';
 
 // Lightweight local-only memory of past checks — no backend, chrome.storage
 // only. Capped well below any storage.local quota concern; 100 products is
@@ -16,6 +17,7 @@ const HISTORY_KEY = 'trustlens_history';
 export const MAX_HISTORY_ENTRIES = 100;
 
 export async function getHistory(): Promise<HistoryEntry[]> {
+  await ensureStorageMigrated();
   const stored = await browser.storage.local.get(HISTORY_KEY);
   const list = stored[HISTORY_KEY];
   return Array.isArray(list) ? list : [];

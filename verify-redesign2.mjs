@@ -56,7 +56,7 @@ async function main() {
     await clickThroughInterstitial(amazonPage);
     await amazonPage.waitForTimeout(4000);
 
-    const panel = amazonPage.locator('#trustlens-root .trustlens-panel');
+    const panel = amazonPage.locator('#gradelens-root .gradelens-panel');
     let visible = false;
     try {
       await panel.waitFor({ state: 'visible', timeout: 15000 });
@@ -70,7 +70,7 @@ async function main() {
       const box = await panel.boundingBox();
       console.log('Panel bounding box:', box);
 
-      const medallionStyles = await amazonPage.locator('.trustlens-medallion').evaluate((el) => {
+      const medallionStyles = await amazonPage.locator('.gradelens-medallion').evaluate((el) => {
         const cs = getComputedStyle(el);
         return {
           backgroundColor: cs.backgroundColor,
@@ -84,10 +84,10 @@ async function main() {
       });
       console.log('Medallion computed styles:', JSON.stringify(medallionStyles, null, 2));
 
-      const gradeText = (await amazonPage.locator('.trustlens-medallion-letter').textContent().catch(() => '')) ?? '';
+      const gradeText = (await amazonPage.locator('.gradelens-medallion-letter').textContent().catch(() => '')) ?? '';
       console.log('Medallion glyph:', gradeText.trim());
 
-      const checkChipTexts = await amazonPage.locator('.trustlens-check-chip').allTextContents();
+      const checkChipTexts = await amazonPage.locator('.gradelens-check-chip').allTextContents();
       console.log('Check status chips:', checkChipTexts);
 
       await panel.scrollIntoViewIfNeeded();

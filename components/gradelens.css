@@ -1,6 +1,6 @@
 @import './tokens.css';
 
-.trustlens-panel {
+.gradelens-panel {
   box-sizing: border-box;
   width: min(100%, 380px);
   margin: 16px 0;
@@ -17,25 +17,25 @@
   animation: tl-panel-in 280ms var(--ease-out) both;
 }
 
-.trustlens-panel * {
+.gradelens-panel * {
   box-sizing: border-box;
 }
 
-.trustlens-brand {
+.gradelens-brand {
   align-items: center;
   display: flex;
   gap: 6px;
   margin: 0 0 8px;
 }
 
-.trustlens-shield {
+.gradelens-shield {
   color: var(--text-secondary);
   flex-shrink: 0;
   height: 12px;
   width: 12px;
 }
 
-.trustlens-wordmark {
+.gradelens-wordmark {
   color: var(--text-secondary);
   font-size: 9.5px;
   font-weight: 700;
@@ -45,7 +45,7 @@
 }
 
 /* Merged header row: medallion + title/subtitle */
-.trustlens-summary-row {
+.gradelens-summary-row {
   align-items: center;
   display: flex;
   gap: 12px;
@@ -84,10 +84,10 @@
    contain box-shadow, which paints outside an element's own box regardless
    of its own overflow — every glow/flash effect below uses `inset`
    box-shadow specifically so it can't spill onto the title/subtitle text
-   sitting only 12px away (trustlens-summary-row's gap). A previous
+   sitting only 12px away (gradelens-summary-row's gap). A previous
    non-inset glow reached ~19px (16px blur + 3px spread) and visibly washed
    over that text. */
-.trustlens-medallion {
+.gradelens-medallion {
   align-items: center;
   background: var(--ink);
   border-radius: var(--radius-medallion);
@@ -109,11 +109,11 @@
    already the phase-choreography property, see the four-act sequence
    above, so touching it here would fight that animation) reads as a
    visibly less certain badge without breaking the entrance/idle timeline. */
-.trustlens-medallion[data-confidence='Low'] {
+.gradelens-medallion[data-confidence='Low'] {
   background: color-mix(in srgb, var(--ink) 50%, var(--page));
 }
 
-.trustlens-medallion::after {
+.gradelens-medallion::after {
   border: 2px solid var(--ink);
   border-radius: inherit;
   content: '';
@@ -128,7 +128,7 @@
    clip-path (not overflow:hidden on the medallion) keeps this confined to
    the rounded-square shape without also clipping ::after's ring, which
    needs to extend past the box via a negative inset. */
-.trustlens-medallion::before {
+.gradelens-medallion::before {
   background: linear-gradient(115deg, transparent 25%, color-mix(in srgb, var(--glyph) 65%, transparent) 50%, transparent 75%);
   border-radius: inherit;
   clip-path: inset(0 round var(--radius-medallion));
@@ -140,34 +140,34 @@
   transform: translateX(-130%);
 }
 
-.trustlens-medallion[data-medallion-phase='enter'] {
+.gradelens-medallion[data-medallion-phase='enter'] {
   animation: tl-medallion-enter 550ms var(--ease-spring) forwards;
 }
 
-.trustlens-medallion[data-medallion-phase='thinking'],
-.trustlens-medallion[data-medallion-phase='resolve'],
-.trustlens-medallion[data-medallion-phase='idle'] {
+.gradelens-medallion[data-medallion-phase='thinking'],
+.gradelens-medallion[data-medallion-phase='resolve'],
+.gradelens-medallion[data-medallion-phase='idle'] {
   opacity: 1;
   transform: scale(1);
 }
 
-.trustlens-medallion[data-medallion-phase='thinking']::after {
+.gradelens-medallion[data-medallion-phase='thinking']::after {
   animation: tl-medallion-scan-ring 700ms ease-out infinite;
 }
 
-.trustlens-medallion[data-medallion-phase='resolve'] {
+.gradelens-medallion[data-medallion-phase='resolve'] {
   animation: tl-medallion-flash 300ms ease-out;
 }
 
-.trustlens-medallion[data-medallion-phase='idle'] {
+.gradelens-medallion[data-medallion-phase='idle'] {
   animation: tl-medallion-idle 2800ms ease-in-out infinite;
 }
 
-.trustlens-medallion[data-medallion-phase='idle']::before {
+.gradelens-medallion[data-medallion-phase='idle']::before {
   animation: tl-medallion-shimmer 3200ms ease-in-out infinite;
 }
 
-.trustlens-medallion-letter {
+.gradelens-medallion-letter {
   color: var(--glyph);
   display: block;
   font-family: var(--font-display);
@@ -178,29 +178,29 @@
   z-index: 1;
 }
 
-.trustlens-medallion[data-medallion-phase='thinking'] .trustlens-medallion-letter {
+.gradelens-medallion[data-medallion-phase='thinking'] .gradelens-medallion-letter {
   animation: tl-letter-flicker 180ms ease-in-out infinite;
   opacity: 1;
 }
 
-.trustlens-medallion[data-medallion-phase='resolve'] .trustlens-medallion-letter,
-.trustlens-medallion[data-medallion-phase='idle'] .trustlens-medallion-letter {
+.gradelens-medallion[data-medallion-phase='resolve'] .gradelens-medallion-letter,
+.gradelens-medallion[data-medallion-phase='idle'] .gradelens-medallion-letter {
   opacity: 1;
 }
 
-.trustlens-medallion[data-medallion-phase='resolve'] .trustlens-medallion-letter {
+.gradelens-medallion[data-medallion-phase='resolve'] .gradelens-medallion-letter {
   animation: tl-letter-punch 300ms var(--ease-spring);
 }
 
-.trustlens-medallion[data-grade='Insufficient data'] .trustlens-medallion-letter {
+.gradelens-medallion[data-grade='Insufficient data'] .gradelens-medallion-letter {
   font-size: 13px;
 }
 
-.trustlens-summary-text {
+.gradelens-summary-text {
   min-width: 0;
 }
 
-.trustlens-title-row {
+.gradelens-title-row {
   align-items: baseline;
   display: flex;
   flex-wrap: wrap;
@@ -208,7 +208,7 @@
   margin: 0 0 2px;
 }
 
-.trustlens-title {
+.gradelens-title {
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 15px;
@@ -222,7 +222,7 @@
    neutral (Moderate, --text-secondary) to a caution tone (Low, --warn) —
    deliberately not --risk, since low confidence isn't itself a bad signal,
    just a thinner one. */
-.trustlens-confidence-chip {
+.gradelens-confidence-chip {
   border-radius: var(--radius-pill);
   font-size: 8.5px;
   font-weight: 700;
@@ -232,22 +232,22 @@
   white-space: nowrap;
 }
 
-.trustlens-confidence-chip[data-level='High'] {
+.gradelens-confidence-chip[data-level='High'] {
   background: color-mix(in srgb, var(--pass) 15%, transparent);
   color: var(--pass);
 }
 
-.trustlens-confidence-chip[data-level='Moderate'] {
+.gradelens-confidence-chip[data-level='Moderate'] {
   background: color-mix(in srgb, var(--text-secondary) 15%, transparent);
   color: var(--text-secondary);
 }
 
-.trustlens-confidence-chip[data-level='Low'] {
+.gradelens-confidence-chip[data-level='Low'] {
   background: color-mix(in srgb, var(--warn) 16%, transparent);
   color: var(--warn);
 }
 
-.trustlens-subtitle {
+.gradelens-subtitle {
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -258,7 +258,7 @@
 /* Actionable verdict (item 3) — a decision, not a report card. Sits right
    under the grade/confidence header, ahead of the signal checklist, so it's
    the second thing read after the letter grade itself. */
-.trustlens-verdict {
+.gradelens-verdict {
   background: var(--page);
   border-radius: var(--radius-control);
   color: var(--ink);
@@ -272,23 +272,23 @@
 /* Signal checklist — collapsed single-line rows: icon + label left, status
    chip right. Each row is a tap target (item 2, why-expansion) that reveals
    a plain-language "what it found and why it matters" line below itself. */
-.trustlens-checks {
+.gradelens-checks {
   display: grid;
   gap: 2px;
   margin: 0 0 8px;
 }
 
-.trustlens-check {
+.gradelens-check {
   animation: tl-row-in 240ms var(--ease-out) both;
   border-radius: var(--radius-control);
   transition: background var(--dur-fast) var(--ease-out);
 }
 
-.trustlens-check[data-expanded='true'] {
+.gradelens-check[data-expanded='true'] {
   background: var(--page);
 }
 
-.trustlens-check-row {
+.gradelens-check-row {
   align-items: center;
   background: none;
   border: 0;
@@ -303,32 +303,32 @@
   width: 100%;
 }
 
-.trustlens-check-left {
+.gradelens-check-left {
   align-items: center;
   display: flex;
   gap: 8px;
   min-width: 0;
 }
 
-.trustlens-check-right {
+.gradelens-check-right {
   align-items: center;
   display: flex;
   flex-shrink: 0;
   gap: 4px;
 }
 
-.trustlens-check-chevron {
+.gradelens-check-chevron {
   color: var(--text-secondary);
   height: 12px;
   transition: transform var(--dur-fast) var(--ease-out);
   width: 12px;
 }
 
-.trustlens-check[data-expanded='true'] .trustlens-check-chevron {
+.gradelens-check[data-expanded='true'] .gradelens-check-chevron {
   transform: rotate(180deg);
 }
 
-.trustlens-check-detail {
+.gradelens-check-detail {
   color: var(--text-secondary);
   font-size: 11.5px;
   line-height: 1.5;
@@ -337,26 +337,26 @@
   animation: tl-row-in 180ms var(--ease-out) both;
 }
 
-.trustlens-check-icon {
+.gradelens-check-icon {
   flex-shrink: 0;
   height: 14px;
   width: 14px;
 }
 
-.trustlens-check[data-status='pass'] .trustlens-check-icon {
+.gradelens-check[data-status='pass'] .gradelens-check-icon {
   color: var(--pass);
 }
 
-.trustlens-check[data-status='risk'] .trustlens-check-icon {
+.gradelens-check[data-status='risk'] .gradelens-check-icon {
   color: var(--risk);
 }
 
-.trustlens-check[data-status='watch'] .trustlens-check-icon,
-.trustlens-check[data-status='unknown'] .trustlens-check-icon {
+.gradelens-check[data-status='watch'] .gradelens-check-icon,
+.gradelens-check[data-status='unknown'] .gradelens-check-icon {
   color: var(--text-secondary);
 }
 
-.trustlens-check-label {
+.gradelens-check-label {
   color: var(--ink);
   font-size: 12px;
   font-weight: 500;
@@ -366,7 +366,7 @@
 }
 
 /* Sample-size shortfall message needs room to breathe, not truncate. */
-.trustlens-check-label--wrap {
+.gradelens-check-label--wrap {
   overflow: visible;
   white-space: normal;
 }
@@ -377,7 +377,7 @@
    than a status enum, so this deliberately drops the all-caps treatment —
    ALL-CAPS "LOOKS FINE" still reads like a build-pipeline badge; sentence
    case is what makes it read as something a person wrote. */
-.trustlens-check-chip {
+.gradelens-check-chip {
   border-radius: var(--radius-pill);
   color: var(--ink);
   flex-shrink: 0;
@@ -387,21 +387,21 @@
   white-space: nowrap;
 }
 
-.trustlens-check[data-status='pass'] .trustlens-check-chip {
+.gradelens-check[data-status='pass'] .gradelens-check-chip {
   background: color-mix(in srgb, var(--pass) 16%, transparent);
 }
 
-.trustlens-check[data-status='risk'] .trustlens-check-chip {
+.gradelens-check[data-status='risk'] .gradelens-check-chip {
   background: color-mix(in srgb, var(--risk) 16%, transparent);
 }
 
-.trustlens-check[data-status='watch'] .trustlens-check-chip,
-.trustlens-check[data-status='unknown'] .trustlens-check-chip {
+.gradelens-check[data-status='watch'] .gradelens-check-chip,
+.gradelens-check[data-status='unknown'] .gradelens-check-chip {
   background: color-mix(in srgb, var(--text-secondary) 16%, transparent);
 }
 
 /* Hairline dividers */
-.trustlens-divider {
+.gradelens-divider {
   background: var(--border);
   border: 0;
   height: 1px;
@@ -409,7 +409,7 @@
 }
 
 /* Plan status + upgrade pill */
-.trustlens-plan-row {
+.gradelens-plan-row {
   align-items: center;
   display: flex;
   gap: 10px;
@@ -417,7 +417,7 @@
   margin: 0 0 8px;
 }
 
-.trustlens-plan-badge {
+.gradelens-plan-badge {
   border-radius: var(--radius-pill);
   font-size: 10px;
   font-weight: 700;
@@ -426,24 +426,24 @@
   text-transform: uppercase;
 }
 
-.trustlens-plan-badge[data-plan='free'] {
+.gradelens-plan-badge[data-plan='free'] {
   background: color-mix(in srgb, var(--text-secondary) 14%, transparent);
   color: var(--text-secondary);
 }
 
-.trustlens-plan-badge[data-plan='pro'] {
+.gradelens-plan-badge[data-plan='pro'] {
   background: color-mix(in srgb, var(--pass) 16%, transparent);
   color: var(--pass);
 }
 
-.trustlens-trials-inline {
+.gradelens-trials-inline {
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 11px;
 }
 
-.trustlens-button {
+.gradelens-button {
   background: var(--ink);
   border: 0;
   border-radius: var(--radius-control);
@@ -458,17 +458,17 @@
   transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
 }
 
-.trustlens-button:active:not(:disabled) {
+.gradelens-button:active:not(:disabled) {
   transform: scale(0.97);
 }
 
-.trustlens-button:disabled {
+.gradelens-button:disabled {
   background: color-mix(in srgb, var(--text-secondary) 25%, transparent);
   color: var(--text-secondary);
   cursor: not-allowed;
 }
 
-.trustlens-status {
+.gradelens-status {
   color: var(--text-secondary);
   font-size: 12px;
   margin: 0 0 8px;
@@ -479,7 +479,7 @@
    card" — one dominant headline, then 3-5 short bullets each carrying one
    emphasized key phrase — rendered with real hierarchy instead of one flat
    paragraph. Target: scannable in ~2 seconds, key terms jumping out. */
-.trustlens-deep-dive {
+.gradelens-deep-dive {
   background: var(--page);
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
@@ -489,7 +489,7 @@
 
 /* The headline — visually dominant: larger, heavier, serif display font so
    it reads as a verdict, not just the first line of body text. */
-.trustlens-deepdive-verdict {
+.gradelens-deepdive-verdict {
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 14.5px;
@@ -498,7 +498,7 @@
   margin: 0 0 10px;
 }
 
-.trustlens-deepdive-bullets {
+.gradelens-deepdive-bullets {
   display: grid;
   gap: 9px;
   list-style: none;
@@ -509,7 +509,7 @@
 /* Body weight/contrast bumped up from the old flat-grey read: full --ink
    (not --text-secondary), 500 weight, and generous line-height so the card
    breathes instead of reading as a dense block. */
-.trustlens-deepdive-bullet {
+.gradelens-deepdive-bullet {
   color: var(--ink);
   font-size: 12.5px;
   font-weight: 500;
@@ -526,29 +526,29 @@
    --pass), rust (⚠️ --risk), and slate (🔍⭐ --slate) immediately
    distinguishable at a glance. Lighter than the previous pass: 14% mix
    background (was 18-20%) and 600 weight (was 700) — softer, not louder. */
-.trustlens-emph {
+.gradelens-emph {
   border-radius: 4px;
   font-weight: 600;
   padding: 0 3px;
 }
 
-.trustlens-emph[data-sentiment='pass'] {
+.gradelens-emph[data-sentiment='pass'] {
   background: color-mix(in srgb, var(--pass) 14%, transparent);
   color: color-mix(in srgb, var(--pass) 75%, var(--ink));
 }
 
-.trustlens-emph[data-sentiment='risk'] {
+.gradelens-emph[data-sentiment='risk'] {
   background: color-mix(in srgb, var(--risk) 14%, transparent);
   color: color-mix(in srgb, var(--risk) 75%, var(--ink));
 }
 
-.trustlens-emph[data-sentiment='neutral'] {
+.gradelens-emph[data-sentiment='neutral'] {
   background: color-mix(in srgb, var(--slate) 14%, transparent);
   color: color-mix(in srgb, var(--slate) 75%, var(--ink));
 }
 
 /* Footer */
-.trustlens-footer {
+.gradelens-footer {
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -557,13 +557,13 @@
 /* Item 8: one line always visible, not five — the full explanation
    (analysis.disclaimer) is still shown in full, just behind the (i) toggle
    instead of permanently occupying footer space nobody reads. */
-.trustlens-disclaimer-row {
+.gradelens-disclaimer-row {
   align-items: baseline;
   display: flex;
   gap: 5px;
 }
 
-.trustlens-disclaimer {
+.gradelens-disclaimer {
   color: var(--text-secondary);
   flex: 1;
   font-size: 10px;
@@ -571,7 +571,7 @@
   margin: 0;
 }
 
-.trustlens-disclaimer-info {
+.gradelens-disclaimer-info {
   background: none;
   border: 0;
   color: var(--text-secondary);
@@ -583,12 +583,12 @@
   transition: color var(--dur-fast) var(--ease-out);
 }
 
-.trustlens-disclaimer-info:hover,
-.trustlens-disclaimer-info[aria-expanded='true'] {
+.gradelens-disclaimer-info:hover,
+.gradelens-disclaimer-info[aria-expanded='true'] {
   color: var(--ink);
 }
 
-.trustlens-disclaimer-full {
+.gradelens-disclaimer-full {
   color: var(--text-secondary);
   font-size: 10px;
   line-height: 1.4;
@@ -596,7 +596,7 @@
   animation: tl-row-in 180ms var(--ease-out) both;
 }
 
-.trustlens-settings-link {
+.gradelens-settings-link {
   align-self: flex-end;
   background: none;
   border: 0;
@@ -611,7 +611,7 @@
   transition: text-decoration-color var(--dur-fast) var(--ease-out);
 }
 
-.trustlens-settings-link:hover {
+.gradelens-settings-link:hover {
   text-decoration-color: currentColor;
 }
 
@@ -751,7 +751,7 @@
 }
 
 @media (max-width: 520px) {
-  .trustlens-panel {
+  .gradelens-panel {
     width: 100%;
   }
 }

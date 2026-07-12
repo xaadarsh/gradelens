@@ -1,8 +1,11 @@
-const USAGE_KEY = 'trustlens_ai_uses';
+import { ensureStorageMigrated } from './storage-migration';
+
+const USAGE_KEY = 'gradelens_ai_uses';
 
 export const FREE_TRIAL_LIMIT = 5;
 
 export async function getUsageCount(): Promise<number> {
+  await ensureStorageMigrated();
   const stored = await browser.storage.local.get(USAGE_KEY);
   const value = Number(stored[USAGE_KEY] ?? 0);
   return Number.isFinite(value) && value > 0 ? value : 0;

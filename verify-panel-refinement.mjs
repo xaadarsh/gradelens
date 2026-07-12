@@ -39,7 +39,7 @@ const PRODUCTS = [
   { key: 'low', label: 'AULA F99 keyboard (amazon.in, ~14 reviews, ~₹6,499)', url: 'https://www.amazon.in/dp/B0FV36VB75' },
 ];
 
-// Deliberately violates the new rules TrustLens's code is supposed to
+// Deliberately violates the new rules GradeLens's code is supposed to
 // defend against: banned confidence language + an over-length headline,
 // and one emphasis span longer than 3 words. If the filters work, none of
 // this survives to the rendered DOM.
@@ -75,33 +75,33 @@ async function verifyProduct(context, product) {
     await page.goto(product.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await clickThroughInterstitial(page);
 
-    const panel = page.locator('#trustlens-root .trustlens-panel');
+    const panel = page.locator('#gradelens-root .gradelens-panel');
     await panel.waitFor({ state: 'visible', timeout: 20000 });
     await page.waitForTimeout(2500);
 
     // --- item 4: medallion fill vs confidence ---
-    result.confidenceLevel = await page.locator('.trustlens-confidence-chip').getAttribute('data-level').catch(() => null);
-    result.medallionBg = await page.locator('.trustlens-medallion').evaluate((node) => getComputedStyle(node).backgroundColor).catch(() => null);
+    result.confidenceLevel = await page.locator('.gradelens-confidence-chip').getAttribute('data-level').catch(() => null);
+    result.medallionBg = await page.locator('.gradelens-medallion').evaluate((node) => getComputedStyle(node).backgroundColor).catch(() => null);
 
     // --- item 2: chip labels are human phrases ---
-    const chipTexts = await page.locator('.trustlens-check-chip').allTextContents();
+    const chipTexts = await page.locator('.gradelens-check-chip').allTextContents();
     result.chipTexts = chipTexts;
     result.chipsAreHuman = chipTexts.length > 0 && chipTexts.every((t) => !/^(PASS|WATCH|RISK|UNKNOWN)$/i.test(t.trim()));
 
     // --- item 3: price-vs-reviews signal ---
-    const checkLabels = await page.locator('.trustlens-check-label').allTextContents();
+    const checkLabels = await page.locator('.gradelens-check-label').allTextContents();
     result.hasPriceCheck = checkLabels.some((l) => /price/i.test(l));
-    result.verdictText = (await page.locator('.trustlens-verdict').textContent().catch(() => ''))?.trim();
+    result.verdictText = (await page.locator('.gradelens-verdict').textContent().catch(() => ''))?.trim();
     result.priceFlagInVerdict = /price|₹|\$/i.test(result.verdictText ?? '');
 
     // --- item 8: disclaimer collapsed by default, toggle works ---
-    const shortDisclaimer = (await page.locator('.trustlens-disclaimer').textContent().catch(() => ''))?.trim();
+    const shortDisclaimer = (await page.locator('.gradelens-disclaimer').textContent().catch(() => ''))?.trim();
     result.shortDisclaimer = shortDisclaimer;
     result.disclaimerIsShort = (shortDisclaimer?.length ?? 999) < 60;
-    result.fullDisclaimerHiddenByDefault = (await page.locator('.trustlens-disclaimer-full').count()) === 0;
-    await page.locator('.trustlens-disclaimer-info').click();
+    result.fullDisclaimerHiddenByDefault = (await page.locator('.gradelens-disclaimer-full').count()) === 0;
+    await page.locator('.gradelens-disclaimer-info').click();
     await page.waitForTimeout(200);
-    const fullDisclaimer = (await page.locator('.trustlens-disclaimer-full').textContent().catch(() => ''))?.trim();
+    const fullDisclaimer = (await page.locator('.gradelens-disclaimer-full').textContent().catch(() => ''))?.trim();
     result.fullDisclaimerAfterToggle = fullDisclaimer;
     result.toggleRevealsFullText = (fullDisclaimer?.length ?? 0) > shortDisclaimer.length;
 
@@ -122,21 +122,21 @@ async function verifyProduct(context, product) {
     await panel.waitFor({ state: 'visible', timeout: 20000 });
     await page.waitForTimeout(2500);
 
-    const deepDiveBtn = page.locator('.trustlens-button');
+    const deepDiveBtn = page.locator('.gradelens-button');
     if ((await deepDiveBtn.count()) > 0 && !(await deepDiveBtn.isDisabled())) {
       await deepDiveBtn.click();
-      await page.locator('.trustlens-deepdive-verdict').waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+      await page.locator('.gradelens-deepdive-verdict').waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
 
-      const headline = (await page.locator('.trustlens-deepdive-verdict').textContent().catch(() => ''))?.trim() ?? '';
+      const headline = (await page.locator('.gradelens-deepdive-verdict').textContent().catch(() => ''))?.trim() ?? '';
       result.deepDiveHeadline = headline;
       result.headlineWordCount = headline.replace(/…$/, '').split(/\s+/).filter(Boolean).length;
       result.headlineCapped = result.headlineWordCount <= 12;
       result.headlineHasEllipsis = headline.endsWith('…');
 
-      const fullDeepDiveText = (await page.locator('.trustlens-deep-dive').textContent().catch(() => '')) ?? '';
+      const fullDeepDiveText = (await page.locator('.gradelens-deep-dive').textContent().catch(() => '')) ?? '';
       result.noConfidenceLanguageLeaked = !/\b(high|moderate|medium|low)[- ]confidence\b|small\s+sample|confidence\s+(?:is|level)/i.test(fullDeepDiveText);
 
-      const emphSpans = page.locator('.trustlens-emph');
+      const emphSpans = page.locator('.gradelens-emph');
       const emphCount = await emphSpans.count();
       const spanDetails = [];
       for (let i = 0; i < emphCount; i++) {
@@ -184,10 +184,10 @@ async function verifyDarkModeStaysLightLocked(context, extensionId) {
   const page = await context.newPage();
   await page.goto('https://www.amazon.in/dp/B0FV36VB75', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await clickThroughInterstitial(page);
-  const panel = page.locator('#trustlens-root .trustlens-panel');
+  const panel = page.locator('#gradelens-root .gradelens-panel');
   await panel.waitFor({ state: 'visible', timeout: 20000 });
   await page.waitForTimeout(2000);
-  const cardBg = await page.locator('.trustlens-panel').evaluate((node) => getComputedStyle(node).backgroundColor);
+  const cardBg = await page.locator('.gradelens-panel').evaluate((node) => getComputedStyle(node).backgroundColor);
   await panel.screenshot({ path: path.join(VERIFICATION_DIR, 'refine-aula-with-settings-dark.png') });
   await page.close();
 
@@ -221,9 +221,9 @@ async function main() {
       const setupPage = await context.newPage();
       await setupPage.goto(`chrome-extension://${extensionId}/options.html`, { waitUntil: 'domcontentloaded' });
       await setupPage.evaluate(async () => {
-        const stored = await chrome.storage.local.get('trustlens.settings');
-        const current = stored['trustlens.settings'] ?? {};
-        await chrome.storage.local.set({ 'trustlens.settings': { ...current, provider: 'gemini', geminiKey: 'mock-key-for-verification' } });
+        const stored = await chrome.storage.local.get('gradelens.settings');
+        const current = stored['gradelens.settings'] ?? {};
+        await chrome.storage.local.set({ 'gradelens.settings': { ...current, provider: 'gemini', geminiKey: 'mock-key-for-verification' } });
       });
       console.log('Mock Gemini key set via options.html storage.');
       await setupPage.close();

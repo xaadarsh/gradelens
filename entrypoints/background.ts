@@ -6,7 +6,7 @@ export default defineBackground(() => {
   // so TrustPanel.tsx's footer Settings link — rendered by the content
   // script on the host page — relays through this listener instead.
   browser.runtime.onMessage.addListener((message) => {
-    if (message?.type === 'trustlens:open-options') {
+    if (message?.type === 'gradelens:open-options') {
       browser.runtime.openOptionsPage();
     }
   });

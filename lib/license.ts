@@ -1,8 +1,9 @@
+import { ensureStorageMigrated } from './storage-migration';
 import type { LicenseStatus } from './types';
 
-const LICENSE_KEY = 'trustlens.license';
+const LICENSE_KEY = 'gradelens.license';
 const RECHECK_INTERVAL_MS = 1000 * 60 * 60 * 24;
-const GUMROAD_PRODUCT_ID = import.meta.env.WXT_GUMROAD_PRODUCT_ID || 'trustlens';
+const GUMROAD_PRODUCT_ID = import.meta.env.WXT_GUMROAD_PRODUCT_ID || 'gradelens';
 
 const DEFAULT_STATUS: LicenseStatus = {
   pro: false,
@@ -10,6 +11,7 @@ const DEFAULT_STATUS: LicenseStatus = {
 };
 
 export async function getCachedLicenseStatus(): Promise<LicenseStatus> {
+  await ensureStorageMigrated();
   const stored = await browser.storage.local.get(LICENSE_KEY);
   return { ...DEFAULT_STATUS, ...(stored[LICENSE_KEY] ?? {}) };
 }
@@ -29,14 +31,16 @@ export async function checkProStatus(force = false): Promise<LicenseStatus> {
 }
 
 export async function setDevProOverride(enabled: boolean): Promise<void> {
+  await ensureStorageMigrated();
   await browser.storage.local.set({
-    'trustlens.devProOverride': enabled,
+    'gradelens.devProOverride': enabled,
   });
 }
 
 export async function getDevProOverride(): Promise<boolean> {
-  const stored = await browser.storage.local.get('trustlens.devProOverride');
-  return Boolean(stored['trustlens.devProOverride']);
+  await ensureStorageMigrated();
+  const stored = await browser.storage.local.get('gradelens.devProOverride');
+  return Boolean(stored['gradelens.devProOverride']);
 }
 
 async function verifyLicense(licenseKey: string | undefined, persist: boolean): Promise<LicenseStatus> {

@@ -74,12 +74,12 @@ async function main() {
       await amazonPage.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await clickThroughInterstitial(amazonPage);
       await amazonPage.waitForTimeout(4000);
-      const panel = amazonPage.locator('#trustlens-root .trustlens-panel');
+      const panel = amazonPage.locator('#gradelens-root .gradelens-panel');
       await panel.waitFor({ state: 'visible', timeout: 15000 });
       const panelReport = await amazonPage.evaluate(() => {
-        const el = document.querySelector('.trustlens-panel');
+        const el = document.querySelector('.gradelens-panel');
         const cs = getComputedStyle(el);
-        const medallion = document.querySelector('.trustlens-medallion');
+        const medallion = document.querySelector('.gradelens-medallion');
         const medallionCs = getComputedStyle(medallion);
         return {
           hasDataThemeAttr: el.hasAttribute('data-theme'),

@@ -64,7 +64,7 @@ async function testOneProduct(product) {
     const page = await context.newPage();
     page.on('console', (msg) => {
       const text = msg.text();
-      if (text.includes('[TrustLens]') && /sign.?in|redirected|failed|errored|No review cards|timed out|scan complete/i.test(text)) {
+      if (text.includes('[GradeLens]') && /sign.?in|redirected|failed|errored|No review cards|timed out|scan complete/i.test(text)) {
         gateMessages.push(text);
       }
     });
@@ -73,7 +73,7 @@ async function testOneProduct(product) {
     await clickThroughInterstitial(page);
     await page.waitForTimeout(3000);
 
-    const panel = page.locator('#trustlens-root .trustlens-panel');
+    const panel = page.locator('#gradelens-root .gradelens-panel');
     let visible = false;
     try {
       await panel.waitFor({ state: 'visible', timeout: 15000 });
@@ -86,8 +86,8 @@ async function testOneProduct(product) {
     if (visible) {
       await page.waitForTimeout(35000);
 
-      const subtitle = (await page.locator('.trustlens-subtitle').textContent().catch(() => '')) ?? '';
-      const gradeGlyph = (await page.locator('.trustlens-medallion-letter').textContent().catch(() => '')) ?? '';
+      const subtitle = (await page.locator('.gradelens-subtitle').textContent().catch(() => '')) ?? '';
+      const gradeGlyph = (await page.locator('.gradelens-medallion-letter').textContent().catch(() => '')) ?? '';
       const totalMatch = subtitle.match(/Based on ([\d,]+) reviews/);
       const scannedMatch = subtitle.match(/([\d,]+)\s+(?:reviews\s+)?analyzed in detail/);
       result.reviewsScanned = scannedMatch ? Number(scannedMatch[1].replace(/,/g, '')) : null;
@@ -95,7 +95,7 @@ async function testOneProduct(product) {
       result.grade = gradeGlyph.trim();
       result.subtitleRaw = subtitle.trim();
 
-      const checkLabels = await page.locator('.trustlens-check-label').allTextContents();
+      const checkLabels = await page.locator('.gradelens-check-label').allTextContents();
       result.checkLabels = checkLabels;
 
       await page.screenshot({ path: path.join(VERIFICATION_DIR, `grading-midrange-${product.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`) });

@@ -31,7 +31,7 @@ function log(line) {
 function recordConsole(tag, msg) {
   const line = `[${tag}] [${msg.type()}] ${msg.text()}`;
   consoleLog.push(line);
-  if (msg.type() === 'warning' || msg.type() === 'error' || msg.text().includes('[TrustLens]')) {
+  if (msg.type() === 'warning' || msg.type() === 'error' || msg.text().includes('[GradeLens]')) {
     console.log(line);
   }
 }
@@ -136,12 +136,12 @@ async function main() {
     // --- Amazon: enabled state ---
     const amazonPage = await context.newPage();
     amazonPage.on('console', (msg) => recordConsole('amazon-enabled', msg));
-    log(`\n=== Navigating to live Amazon product page (TrustLens should be ENABLED by default) ===`);
+    log(`\n=== Navigating to live Amazon product page (GradeLens should be ENABLED by default) ===`);
     await amazonPage.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await clickThroughAmazonInterstitial(amazonPage);
     await amazonPage.waitForTimeout(3000);
 
-    const panelLocatorEnabled = amazonPage.locator('#trustlens-root .trustlens-panel');
+    const panelLocatorEnabled = amazonPage.locator('#gradelens-root .gradelens-panel');
     let panelVisibleEnabled = false;
     try {
       await panelLocatorEnabled.waitFor({ state: 'visible', timeout: 20000 });
@@ -155,7 +155,7 @@ async function main() {
 
     let initialGradeText = '';
     if (panelVisibleEnabled) {
-      initialGradeText = (await amazonPage.locator('.trustlens-medallion-letter').textContent().catch(() => '')) ?? '';
+      initialGradeText = (await amazonPage.locator('.gradelens-medallion-letter').textContent().catch(() => '')) ?? '';
       log(`Initial grade badge text (before lazy-load window): "${initialGradeText.trim()}"`);
     }
 
@@ -166,8 +166,8 @@ async function main() {
     log('Waiting ~11s for organic accumulation / pagination to pick up an initial batch...');
     await amazonPage.waitForTimeout(11000);
 
-    const finalGradeText = (await amazonPage.locator('.trustlens-medallion-letter').textContent().catch(() => '')) ?? '';
-    const reviewCountText = (await amazonPage.locator('.trustlens-subtitle').textContent().catch(() => '')) ?? '';
+    const finalGradeText = (await amazonPage.locator('.gradelens-medallion-letter').textContent().catch(() => '')) ?? '';
+    const reviewCountText = (await amazonPage.locator('.gradelens-subtitle').textContent().catch(() => '')) ?? '';
     log(`Final grade badge text (after lazy-load window): "${finalGradeText.trim()}"`);
     log(`Final review-count summary: "${reviewCountText.trim()}"`);
     results.real_grade_after_lazy_load = finalGradeText.trim().length > 0 && !finalGradeText.includes('Insufficient data');
@@ -176,7 +176,7 @@ async function main() {
     await amazonPage.close();
 
     // --- Toggle OFF via popup ---
-    log(`\n=== Toggling TrustLens OFF via popup ===`);
+    log(`\n=== Toggling GradeLens OFF via popup ===`);
     await popupPage.bringToFront();
     await popupPage.locator('.switch').click();
     await popupPage.waitForTimeout(500);
@@ -191,21 +191,21 @@ async function main() {
       recordConsole('amazon-disabled', msg);
       offConsoleMessages.push(`[${msg.type()}] ${msg.text()}`);
     });
-    log('Reloading the same Amazon product page with TrustLens disabled...');
+    log('Reloading the same Amazon product page with GradeLens disabled...');
     await amazonPageOff.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await clickThroughAmazonInterstitial(amazonPageOff);
     await amazonPageOff.waitForTimeout(3000);
 
-    const panelLocatorDisabled = amazonPageOff.locator('#trustlens-root');
+    const panelLocatorDisabled = amazonPageOff.locator('#gradelens-root');
     const panelCountDisabled = await panelLocatorDisabled.count();
     results.no_pill_when_disabled = panelCountDisabled === 0;
-    results.no_console_activity_when_disabled = offConsoleMessages.filter((m) => m.includes('TrustLens')).length === 0;
+    results.no_console_activity_when_disabled = offConsoleMessages.filter((m) => m.includes('GradeLens')).length === 0;
     await amazonPageOff.screenshot({ path: path.join(VERIFICATION_DIR, 'amazon-panel-disabled.png') });
-    log(`Screenshot saved: verification/amazon-panel-disabled.png (#trustlens-root count: ${panelCountDisabled}, TrustLens console messages: ${offConsoleMessages.filter((m) => m.includes('TrustLens')).length})`);
+    log(`Screenshot saved: verification/amazon-panel-disabled.png (#gradelens-root count: ${panelCountDisabled}, GradeLens console messages: ${offConsoleMessages.filter((m) => m.includes('GradeLens')).length})`);
     await amazonPageOff.close();
 
     // --- Toggle back ON via popup ---
-    log(`\n=== Toggling TrustLens back ON via popup ===`);
+    log(`\n=== Toggling GradeLens back ON via popup ===`);
     await popupPage.bringToFront();
     await popupPage.locator('.switch').click();
     await popupPage.waitForTimeout(500);
@@ -217,12 +217,12 @@ async function main() {
     // --- Amazon: re-enabled state (reload) ---
     const amazonPageOn = await context.newPage();
     amazonPageOn.on('console', (msg) => recordConsole('amazon-reenabled', msg));
-    log('Reloading the same Amazon product page with TrustLens re-enabled...');
+    log('Reloading the same Amazon product page with GradeLens re-enabled...');
     await amazonPageOn.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await clickThroughAmazonInterstitial(amazonPageOn);
     await amazonPageOn.waitForTimeout(3000);
 
-    const panelLocatorReenabled = amazonPageOn.locator('#trustlens-root .trustlens-panel');
+    const panelLocatorReenabled = amazonPageOn.locator('#gradelens-root .gradelens-panel');
     let panelVisibleReenabled = false;
     try {
       await panelLocatorReenabled.waitFor({ state: 'visible', timeout: 20000 });

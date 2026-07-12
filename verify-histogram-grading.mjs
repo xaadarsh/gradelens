@@ -61,16 +61,16 @@ async function main() {
         await clickThroughInterstitial(page);
         await page.waitForTimeout(4500);
 
-        const panel = page.locator('#trustlens-root .trustlens-panel');
+        const panel = page.locator('#gradelens-root .gradelens-panel');
         await panel.waitFor({ state: 'visible', timeout: 15000 });
         entry.panelVisible = true;
 
         const report = await page.evaluate(() => {
-          const grade = document.querySelector('.trustlens-medallion-letter')?.textContent?.trim() ?? null;
-          const subtitle = document.querySelector('.trustlens-subtitle')?.textContent?.trim() ?? null;
-          const checks = [...document.querySelectorAll('.trustlens-check')].map((row) => ({
+          const grade = document.querySelector('.gradelens-medallion-letter')?.textContent?.trim() ?? null;
+          const subtitle = document.querySelector('.gradelens-subtitle')?.textContent?.trim() ?? null;
+          const checks = [...document.querySelectorAll('.gradelens-check')].map((row) => ({
             status: row.getAttribute('data-status'),
-            label: row.querySelector('.trustlens-check-label')?.textContent?.trim() ?? '',
+            label: row.querySelector('.gradelens-check-label')?.textContent?.trim() ?? '',
           }));
           return { grade, subtitle, checks };
         });

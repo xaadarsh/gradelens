@@ -26,7 +26,7 @@ async function main() {
 
   const page = await context.newPage();
   page.on('console', (msg) => {
-    if (msg.text().includes('TrustLens')) console.log('[console]', msg.text());
+    if (msg.text().includes('GradeLens')) console.log('[console]', msg.text());
   });
 
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -36,12 +36,12 @@ async function main() {
     await page.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
   }
 
-  await page.locator('#trustlens-root .trustlens-panel').waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator('#gradelens-root .gradelens-panel').waitFor({ state: 'visible', timeout: 15000 });
 
   for (const seconds of [2, 5, 10, 15, 20]) {
     await page.waitForTimeout(seconds === 2 ? 2000 : 3000);
     const checks = await page.evaluate(() =>
-      [...document.querySelectorAll('.trustlens-check')].map((row) => row.querySelector('.trustlens-check-label')?.textContent?.trim()),
+      [...document.querySelectorAll('.gradelens-check')].map((row) => row.querySelector('.gradelens-check-label')?.textContent?.trim()),
     );
     console.log(`\n[t=${seconds}s cumulative] checks (${checks.length}):`, checks);
   }

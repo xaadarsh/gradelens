@@ -194,7 +194,7 @@ async function main() {
     const amazonPage = await context.newPage();
     await amazonPage.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await clickThroughInterstitial(amazonPage);
-    const panel = amazonPage.locator('#trustlens-root .trustlens-panel');
+    const panel = amazonPage.locator('#gradelens-root .gradelens-panel');
     await panel.waitFor({ state: 'visible', timeout: 20000 });
     await panel.scrollIntoViewIfNeeded();
 
@@ -207,7 +207,7 @@ async function main() {
       const wait = Math.max(0, target - (Date.now() - it0));
       if (wait > 0) await amazonPage.waitForTimeout(wait);
       const state = await amazonPage.evaluate(() => {
-        const m = document.querySelector('.trustlens-medallion');
+        const m = document.querySelector('.gradelens-medallion');
         const cs = getComputedStyle(m);
         const beforeCs = getComputedStyle(m, '::before');
         return {
@@ -228,12 +228,12 @@ async function main() {
     await panelReducedPage.emulateMedia({ reducedMotion: 'reduce' });
     await panelReducedPage.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await clickThroughInterstitial(panelReducedPage);
-    const reducedPanel = panelReducedPage.locator('#trustlens-root .trustlens-panel');
+    const reducedPanel = panelReducedPage.locator('#gradelens-root .gradelens-panel');
     await reducedPanel.waitFor({ state: 'visible', timeout: 20000 });
     await panelReducedPage.waitForTimeout(80);
     const panelReducedState = await panelReducedPage.evaluate(() => {
-      const m = document.querySelector('.trustlens-medallion');
-      const letter = document.querySelector('.trustlens-medallion-letter');
+      const m = document.querySelector('.gradelens-medallion');
+      const letter = document.querySelector('.gradelens-medallion-letter');
       return {
         phase: m.getAttribute('data-medallion-phase'),
         opacity: getComputedStyle(m).opacity,

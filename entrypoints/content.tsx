@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { TrustPanel } from '@/components/TrustPanel';
-import '@/components/trustlens.css';
+import '@/components/gradelens.css';
 import { getSettings } from '@/lib/byo-key';
 import type { RatingHistogramEntry, ReviewSample, ScrapedAmazonPage } from '@/lib/types';
 
@@ -29,7 +29,7 @@ export default defineContentScript({
     // surfaces as a visible console error. Graceful degradation (item 4)
     // means every failure path resolves to a clean, silent state instead.
     mountWhenReady().catch((err) => {
-      console.warn('[TrustLens] mountWhenReady failed unexpectedly — panel not mounted.', err);
+      console.warn('[GradeLens] mountWhenReady failed unexpectedly — panel not mounted.', err);
     });
   },
 });
@@ -87,18 +87,18 @@ function mergeReviews(acc: ReviewAccumulator, candidates: ReviewSample[]): numbe
 }
 
 async function mountWhenReady() {
-  const existing = document.getElementById('trustlens-root');
+  const existing = document.getElementById('gradelens-root');
   if (existing) existing.remove();
 
   const initialPage = scrapeAmazonPage(document);
   const mountAnchor = initialPage.mountAnchor;
   if (!mountAnchor) {
-    console.warn('[TrustLens] Could not find a stable mount anchor near the rating summary.');
+    console.warn('[GradeLens] Could not find a stable mount anchor near the rating summary.');
     return;
   }
 
   const root = document.createElement('div');
-  root.id = 'trustlens-root';
+  root.id = 'gradelens-root';
   mountAnchor.insertAdjacentElement('afterend', root);
   const reactRoot = createRoot(root);
   reactRoot.render(<TrustPanel page={initialPage} />);
@@ -151,7 +151,7 @@ function startOrganicAccumulation(reactRoot: ReturnType<typeof createRoot>, acc:
     const added = mergeReviews(acc, candidates);
     if (added > 0) {
       console.log(
-        `[TrustLens] Organic accumulation: ${added} newly-rendered review card(s) found while browsing — sample now ${acc.page.reviews.length}, re-grading.`,
+        `[GradeLens] Organic accumulation: ${added} newly-rendered review card(s) found while browsing — sample now ${acc.page.reviews.length}, re-grading.`,
       );
       reactRoot.render(<TrustPanel page={acc.page} />);
     }
@@ -182,40 +182,40 @@ async function enhanceWithMoreReviews(reactRoot: ReturnType<typeof createRoot>, 
       const url = `https://${location.hostname}/product-reviews/${acc.page.asin}/?ie=UTF8&reviewerType=all_reviews&sortBy=recent&pageNumber=${pageNumber}`;
       const res = await fetch(url);
       if (res.redirected && /\/ap\/signin/.test(res.url)) {
-        console.log(`[TrustLens] Additional review pages require signing in to Amazon (redirected to ${new URL(res.url).pathname}) — stopping scan silently, keeping ${acc.page.reviews.length} review(s).`);
+        console.log(`[GradeLens] Additional review pages require signing in to Amazon (redirected to ${new URL(res.url).pathname}) — stopping scan silently, keeping ${acc.page.reviews.length} review(s).`);
         return;
       }
       if (!res.ok) {
-        console.log(`[TrustLens] Additional review page ${pageNumber} fetch failed (HTTP ${res.status}) — stopping scan silently, keeping ${acc.page.reviews.length} review(s).`);
+        console.log(`[GradeLens] Additional review page ${pageNumber} fetch failed (HTTP ${res.status}) — stopping scan silently, keeping ${acc.page.reviews.length} review(s).`);
         return;
       }
       html = await res.text();
     } catch (err) {
-      console.log(`[TrustLens] Additional review page ${pageNumber} fetch errored — stopping scan silently, keeping ${acc.page.reviews.length} review(s).`, err);
+      console.log(`[GradeLens] Additional review page ${pageNumber} fetch errored — stopping scan silently, keeping ${acc.page.reviews.length} review(s).`, err);
       return;
     }
 
     const parsedDoc = new DOMParser().parseFromString(html, 'text/html');
 
     if (isSignInGated(parsedDoc)) {
-      console.log(`[TrustLens] Review page ${pageNumber} requires sign-in — stopping scan silently, keeping ${acc.page.reviews.length} review(s).`);
+      console.log(`[GradeLens] Review page ${pageNumber} requires sign-in — stopping scan silently, keeping ${acc.page.reviews.length} review(s).`);
       return;
     }
 
     const cards = queryAll('reviewCards', parsedDoc);
     if (cards.length === 0) {
-      console.log(`[TrustLens] No review cards found on page ${pageNumber} — stopping scan, keeping ${acc.page.reviews.length} review(s).`);
+      console.log(`[GradeLens] No review cards found on page ${pageNumber} — stopping scan, keeping ${acc.page.reviews.length} review(s).`);
       return;
     }
 
     const candidates = cards.map((card, index) => scrapeReview(card, acc.page.reviews.length + index, queryFirst));
     const added = mergeReviews(acc, candidates);
     if (added === 0) {
-      console.log(`[TrustLens] Page ${pageNumber} returned no new reviews (likely end of pagination) — stopping scan, keeping ${acc.page.reviews.length} review(s).`);
+      console.log(`[GradeLens] Page ${pageNumber} returned no new reviews (likely end of pagination) — stopping scan, keeping ${acc.page.reviews.length} review(s).`);
       return;
     }
 
-    console.log(`[TrustLens] Additional review page ${pageNumber} added ${added} new review(s) — now have ${acc.page.reviews.length} of ${acc.page.totalReviews} total review(s).`);
+    console.log(`[GradeLens] Additional review page ${pageNumber} added ${added} new review(s) — now have ${acc.page.reviews.length} of ${acc.page.totalReviews} total review(s).`);
     reactRoot.render(<TrustPanel page={acc.page} />);
   }
 }
@@ -291,7 +291,7 @@ function queryFirst(group: keyof typeof selectors, root: ParentNode): Element | 
     const found = root.querySelector(selector);
     if (found) return found;
   }
-  console.warn(`[TrustLens] No match for ${group}: ${selectors[group].join(', ')}`);
+  console.warn(`[GradeLens] No match for ${group}: ${selectors[group].join(', ')}`);
   return null;
 }
 
@@ -300,13 +300,13 @@ function queryAll(group: keyof typeof selectors, root: ParentNode): Element[] {
     const found = [...root.querySelectorAll(selector)];
     if (found.length) return found;
   }
-  console.warn(`[TrustLens] No matches for ${group}: ${selectors[group].join(', ')}`);
+  console.warn(`[GradeLens] No matches for ${group}: ${selectors[group].join(', ')}`);
   return [];
 }
 
 // Amazon renders a full star-by-star breakdown (e.g. "54% gave 5 stars") on
 // nearly every product page, computed from the ENTIRE review population —
-// unlike the ~10-45 review cards TrustLens can scrape, which are a small,
+// unlike the ~10-45 review cards GradeLens can scrape, which are a small,
 // "helpful"-vote-biased sample. This is the single richest signal available
 // and doesn't require scrolling into the reviews section or hitting the
 // sign-in gate that blocks the extra-page fetch in enhanceWithMoreReviews.
@@ -315,7 +315,7 @@ const MIN_HISTOGRAM_LEVELS = 3;
 function scrapeRatingHistogram(root: ParentNode): RatingHistogramEntry[] {
   const table = queryFirst('ratingHistogramTable', root);
   if (!table) {
-    console.warn('[TrustLens] No rating histogram table found on this page variant — grading will fall back to overall rating/count only.');
+    console.warn('[GradeLens] No rating histogram table found on this page variant — grading will fall back to overall rating/count only.');
     return [];
   }
 
@@ -386,10 +386,10 @@ function scrapeAmazonPage(root: Document): ScrapedAmazonPage & PageAnchors {
   };
 
   if (!page.reviews.length) {
-    console.warn('[TrustLens] No visible review cards found on this page. Amazon may lazy-load reviews or use a locale-specific layout.');
+    console.warn('[GradeLens] No visible review cards found on this page. Amazon may lazy-load reviews or use a locale-specific layout.');
   }
   if (!page.productFirstAvailable) {
-    console.warn('[TrustLens] Date First Available was not found in the visible product details blocks.');
+    console.warn('[GradeLens] Date First Available was not found in the visible product details blocks.');
   }
 
   checkSelectorHealth(page);
@@ -400,7 +400,7 @@ function scrapeAmazonPage(root: Document): ScrapedAmazonPage & PageAnchors {
 // Silent self-check (item 5): the one combination that specifically signals
 // a selector broken by an Amazon layout change, as opposed to an honestly
 // low-review product — Amazon itself reports reviews exist (totalReviews >
-// 0), but TrustLens found neither individual review cards NOR a histogram.
+// 0), but GradeLens found neither individual review cards NOR a histogram.
 // A genuinely sparse product (few reviews) still normally has a working
 // histogram; this combination means the scrape came back empty on a page
 // that isn't actually empty. Console-only, never surfaced in the UI — the
@@ -409,7 +409,7 @@ function scrapeAmazonPage(root: Document): ScrapedAmazonPage & PageAnchors {
 function checkSelectorHealth(page: ScrapedAmazonPage): void {
   if (page.totalReviews > 0 && page.reviews.length === 0 && page.ratingHistogram.length === 0) {
     console.warn(
-      `[TrustLens] SELECTOR HEALTH: this page reports ${page.totalReviews.toLocaleString()} total review(s) but TrustLens scraped 0 review cards and found no rating histogram — likely a broken selector after an Amazon layout change, not a low-review product.`,
+      `[GradeLens] SELECTOR HEALTH: this page reports ${page.totalReviews.toLocaleString()} total review(s) but GradeLens scraped 0 review cards and found no rating histogram — likely a broken selector after an Amazon layout change, not a low-review product.`,
     );
   }
 }

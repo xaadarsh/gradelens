@@ -59,7 +59,7 @@ async function main() {
     await clickThroughInterstitial(amazonPage);
     await amazonPage.waitForTimeout(4000);
 
-    const panel = amazonPage.locator('#trustlens-root .trustlens-panel');
+    const panel = amazonPage.locator('#gradelens-root .gradelens-panel');
     let visible = false;
     try {
       await panel.waitFor({ state: 'visible', timeout: 15000 });
@@ -70,7 +70,7 @@ async function main() {
     console.log('TrustPanel visible:', visible);
 
     if (visible) {
-      const gradeText = (await amazonPage.locator('.trustlens-medallion-letter').textContent().catch(() => '')) ?? '';
+      const gradeText = (await amazonPage.locator('.gradelens-medallion-letter').textContent().catch(() => '')) ?? '';
       console.log('Medallion glyph:', gradeText.trim());
       await panel.scrollIntoViewIfNeeded();
       await amazonPage.screenshot({ path: path.join(VERIFICATION_DIR, 'trustpanel-redesign-full.png') });

@@ -19,20 +19,20 @@ interface TrustPanelProps {
 const SHORT_DISCLAIMER = 'Pattern-based signals, not proof.';
 
 // Animation sequencing (ms) — mirrors the durations declared in
-// trustlens.css (tl-panel-in, tl-row-in). Computed here rather than
+// gradelens.css (tl-panel-in, tl-row-in). Computed here rather than
 // hardcoded because the medallion's hero sequence is supposed to start only
 // once every signal row has finished staggering in, and the row count
 // varies (2 population-only checks vs up to 6 with a full scraped sample) —
 // a fixed delay would either cut rows off or leave an awkward gap before
 // the medallion starts its story.
-const ROW_STAGGER_START_MS = 280; // matches .trustlens-panel's tl-panel-in duration
+const ROW_STAGGER_START_MS = 280; // matches .gradelens-panel's tl-panel-in duration
 const ROW_STAGGER_STEP_MS = 35;
-const ROW_ANIM_DURATION_MS = 240; // matches .trustlens-check's tl-row-in duration
+const ROW_ANIM_DURATION_MS = 240; // matches .gradelens-check's tl-row-in duration
 const MEDALLION_START_BUFFER_MS = 120; // breathing room after the last row settles, before the hero moment
 
 // The medallion's own four-act story, once it starts: a bold entrance pop,
 // a visible "thinking" beat, a punchy resolve into the real grade, then it
-// goes static (idle handled entirely in CSS from there — see trustlens.css).
+// goes static (idle handled entirely in CSS from there — see gradelens.css).
 const MEDALLION_ENTER_MS = 550;
 const MEDALLION_THINKING_MS = 750;
 const MEDALLION_RESOLVE_MS = 300;
@@ -92,7 +92,7 @@ export function TrustPanel({ page }: TrustPanelProps) {
   // Local history (see lib/history.ts): records once a real grade exists,
   // and re-fires (overwriting the same ASIN's entry, never duplicating) if
   // the grade changes later as organic accumulation grows the sample —
-  // always reflects the latest read TrustLens actually showed the user.
+  // always reflects the latest read GradeLens actually showed the user.
   useEffect(() => {
     if (analysis.grade === 'Insufficient data' || !page.asin) return;
     recordHistoryEntry({ asin: page.asin, title: page.title || page.asin, grade: analysis.grade, date: Date.now() }).catch(() => undefined);
@@ -173,7 +173,7 @@ export function TrustPanel({ page }: TrustPanelProps) {
 
       const apiKey = getProviderKey(settings);
       if (!apiKey) {
-        setDeepDiveStatus(`Add a ${settings.provider === 'gemini' ? 'Gemini' : 'OpenAI'} key in TrustLens settings first.`);
+        setDeepDiveStatus(`Add a ${settings.provider === 'gemini' ? 'Gemini' : 'OpenAI'} key in GradeLens settings first.`);
         return;
       }
 
@@ -198,43 +198,43 @@ export function TrustPanel({ page }: TrustPanelProps) {
   }
 
   return (
-    <section className="trustlens-panel" aria-label="TrustLens review confidence">
-      <div className="trustlens-brand">
-        <ShieldIcon className="trustlens-shield" />
-        <p className="trustlens-wordmark">TrustLens</p>
+    <section className="gradelens-panel" aria-label="GradeLens review confidence">
+      <div className="gradelens-brand">
+        <ShieldIcon className="gradelens-shield" />
+        <p className="gradelens-wordmark">GradeLens</p>
       </div>
 
-      <div className="trustlens-summary-row">
+      <div className="gradelens-summary-row">
         <div
-          className="trustlens-medallion"
+          className="gradelens-medallion"
           data-grade={analysis.grade}
           data-medallion-phase={medallionPhase}
           data-confidence={analysis.confidence}
         >
-          <span className="trustlens-medallion-letter">
+          <span className="gradelens-medallion-letter">
             {medallionPhase === 'thinking' ? thinkingGlyph : medallionGlyph(analysis.grade)}
           </span>
         </div>
-        <div className="trustlens-summary-text">
-          <div className="trustlens-title-row">
-            <p className="trustlens-title">Review confidence</p>
+        <div className="gradelens-summary-text">
+          <div className="gradelens-title-row">
+            <p className="gradelens-title">Review confidence</p>
             {analysis.grade !== 'Insufficient data' ? (
-              <span className="trustlens-confidence-chip" data-level={analysis.confidence}>{analysis.confidence} confidence</span>
+              <span className="gradelens-confidence-chip" data-level={analysis.confidence}>{analysis.confidence} confidence</span>
             ) : null}
           </div>
-          <p className="trustlens-subtitle">{subtitleText(page)}</p>
+          <p className="gradelens-subtitle">{subtitleText(page)}</p>
         </div>
       </div>
 
-      <p className="trustlens-verdict">{analysis.verdict}</p>
+      <p className="gradelens-verdict">{analysis.verdict}</p>
 
-      <div className="trustlens-checks">
+      <div className="gradelens-checks">
         {analysis.checks.map((check, index) => {
           const isShortfall = check.id === 'sample-size';
           const isExpanded = expandedChecks.has(check.id);
           return (
             <div
-              className="trustlens-check"
+              className="gradelens-check"
               data-status={check.status}
               data-expanded={isExpanded}
               key={check.id}
@@ -242,53 +242,53 @@ export function TrustPanel({ page }: TrustPanelProps) {
             >
               <button
                 type="button"
-                className="trustlens-check-row"
+                className="gradelens-check-row"
                 aria-expanded={isExpanded}
                 onClick={() => toggleCheckExpanded(check.id)}
               >
-                <div className="trustlens-check-left">
+                <div className="gradelens-check-left">
                   <CheckStatusIcon status={check.status} />
-                  <span className={isShortfall ? 'trustlens-check-label trustlens-check-label--wrap' : 'trustlens-check-label'}>
+                  <span className={isShortfall ? 'gradelens-check-label gradelens-check-label--wrap' : 'gradelens-check-label'}>
                     {check.label}
                   </span>
                 </div>
                 {!isShortfall ? (
-                  <span className="trustlens-check-right">
-                    <span className="trustlens-check-chip">{statusLabel(check.status)}</span>
-                    <ChevronIcon className="trustlens-check-chevron" />
+                  <span className="gradelens-check-right">
+                    <span className="gradelens-check-chip">{statusLabel(check.status)}</span>
+                    <ChevronIcon className="gradelens-check-chevron" />
                   </span>
                 ) : null}
               </button>
-              {isExpanded && !isShortfall ? <p className="trustlens-check-detail">{check.detail}</p> : null}
+              {isExpanded && !isShortfall ? <p className="gradelens-check-detail">{check.detail}</p> : null}
             </div>
           );
         })}
       </div>
 
-      <hr className="trustlens-divider" />
+      <hr className="gradelens-divider" />
 
-      <div className="trustlens-plan-row">
-        <span className="trustlens-plan-badge" data-plan={isPro ? 'pro' : 'free'}>{isPro ? 'Pro' : 'Free'}</span>
+      <div className="gradelens-plan-row">
+        <span className="gradelens-plan-badge" data-plan={isPro ? 'pro' : 'free'}>{isPro ? 'Pro' : 'Free'}</span>
         {!isPro ? (
-          <span className="trustlens-trials-inline">{remainingTrials} of {FREE_TRIAL_LIMIT} free analyses left</span>
+          <span className="gradelens-trials-inline">{remainingTrials} of {FREE_TRIAL_LIMIT} free analyses left</span>
         ) : null}
       </div>
 
-      <button className="trustlens-button" disabled={busy || analysis.grade === 'Insufficient data'} onClick={handleDeepDive}>
+      <button className="gradelens-button" disabled={busy || analysis.grade === 'Insufficient data'} onClick={handleDeepDive}>
         {busy ? 'Analyzing...' : ctaText(isPro, remainingTrials)}
       </button>
 
-      {deepDiveStatus ? <p className="trustlens-status">{deepDiveStatus}</p> : null}
+      {deepDiveStatus ? <p className="gradelens-status">{deepDiveStatus}</p> : null}
       {deepDive ? renderDeepDiveBody(deepDive) : null}
 
-      <hr className="trustlens-divider" />
+      <hr className="gradelens-divider" />
 
-      <footer className="trustlens-footer">
-        <div className="trustlens-disclaimer-row">
-          <p className="trustlens-disclaimer">{SHORT_DISCLAIMER}</p>
+      <footer className="gradelens-footer">
+        <div className="gradelens-disclaimer-row">
+          <p className="gradelens-disclaimer">{SHORT_DISCLAIMER}</p>
           <button
             type="button"
-            className="trustlens-disclaimer-info"
+            className="gradelens-disclaimer-info"
             aria-expanded={showFullDisclaimer}
             aria-label="How this works"
             onClick={() => setShowFullDisclaimer((prev) => !prev)}
@@ -296,10 +296,10 @@ export function TrustPanel({ page }: TrustPanelProps) {
             ⓘ
           </button>
         </div>
-        {showFullDisclaimer ? <p className="trustlens-disclaimer-full">{analysis.disclaimer}</p> : null}
+        {showFullDisclaimer ? <p className="gradelens-disclaimer-full">{analysis.disclaimer}</p> : null}
         <button
-          className="trustlens-settings-link"
-          onClick={() => browser.runtime.sendMessage({ type: 'trustlens:open-options' }).catch(() => undefined)}
+          className="gradelens-settings-link"
+          onClick={() => browser.runtime.sendMessage({ type: 'gradelens:open-options' }).catch(() => undefined)}
         >
           Settings
         </button>
@@ -316,14 +316,14 @@ function safeAnalyze(page: ScrapedAmazonPage): StatisticalAnalysis {
   try {
     return analyzeReviews(page);
   } catch (error) {
-    console.warn('[TrustLens] analyzeReviews threw unexpectedly — falling back to Insufficient data.', error);
-    const label = 'TrustLens hit an unexpected error reading this page and could not compute a grade.';
+    console.warn('[GradeLens] analyzeReviews threw unexpectedly — falling back to Insufficient data.', error);
+    const label = 'GradeLens hit an unexpected error reading this page and could not compute a grade.';
     return {
       grade: 'Insufficient data',
       score: null,
       sampleSize: page.reviews.length,
       checks: [{ id: 'sample-size', label, status: 'unknown', score: 0, detail: label }],
-      disclaimer: 'TrustLens shows pattern-based confidence signals from visible review data. It does not prove whether any review, reviewer, seller, or product is fake.',
+      disclaimer: 'GradeLens shows pattern-based confidence signals from visible review data. It does not prove whether any review, reviewer, seller, or product is fake.',
       confidence: 'Low',
       verdict: 'Not enough data on this page to make a call — read a handful of recent reviews yourself before deciding.',
     };
@@ -342,14 +342,14 @@ function renderDeepDiveBody(text: string) {
   const [verdictLine, ...bulletLines] = lines;
 
   return (
-    <div className="trustlens-deep-dive">
-      <p className="trustlens-deepdive-verdict">{renderEmphasis(truncateWords(verdictLine, HEADLINE_MAX_WORDS), 'neutral')}</p>
+    <div className="gradelens-deep-dive">
+      <p className="gradelens-deepdive-verdict">{renderEmphasis(truncateWords(verdictLine, HEADLINE_MAX_WORDS), 'neutral')}</p>
       {bulletLines.length > 0 ? (
-        <ul className="trustlens-deepdive-bullets">
+        <ul className="gradelens-deepdive-bullets">
           {bulletLines.map((line, index) => {
             const sentiment = bulletSentiment(line);
             return (
-              <li key={index} className="trustlens-deepdive-bullet" data-sentiment={sentiment}>
+              <li key={index} className="gradelens-deepdive-bullet" data-sentiment={sentiment}>
                 {renderEmphasis(line, sentiment)}
               </li>
             );
@@ -404,7 +404,7 @@ function renderEmphasis(line: string, sentiment: EmphasisSentiment) {
       const overflow = words.slice(EMPHASIS_MAX_WORDS).join(' ');
       return (
         <span key={index}>
-          <mark className="trustlens-emph" data-sentiment={sentiment}>
+          <mark className="gradelens-emph" data-sentiment={sentiment}>
             {emphasized}
           </mark>
           {overflow ? ` ${overflow}` : ''}
@@ -443,7 +443,7 @@ function statusLabel(status: CheckStatus): string {
 
 // Population-first framing, matching how the grade is actually computed now
 // (see analyzeReviews): "Based on N reviews" reflects Amazon's full review
-// count, not just the handful of cards TrustLens managed to scrape. The
+// count, not just the handful of cards GradeLens managed to scrape. The
 // "analyzed in detail" count is reviewsScanned, which grows live as organic
 // accumulation and opportunistic pagination add more cards (see
 // entrypoints/content.tsx) — this re-renders on every growth, so the number
@@ -477,7 +477,7 @@ function CheckStatusIcon({ status }: { status: CheckStatus }) {
 
 function CheckIcon() {
   return (
-    <svg className="trustlens-check-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg className="gradelens-check-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.6" />
       <path d="M7.5 12.5l3 3 6-6.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -486,7 +486,7 @@ function CheckIcon() {
 
 function WarningIcon() {
   return (
-    <svg className="trustlens-check-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg className="gradelens-check-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path d="M12 3.5L21 19H3L12 3.5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
       <path d="M12 9.5v4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <circle cx="12" cy="16.5" r="0.9" fill="currentColor" />
@@ -496,7 +496,7 @@ function WarningIcon() {
 
 function DotIcon() {
   return (
-    <svg className="trustlens-check-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg className="gradelens-check-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.6" />
       <circle cx="12" cy="12" r="3.2" fill="currentColor" />
     </svg>

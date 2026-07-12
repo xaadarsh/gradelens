@@ -50,16 +50,16 @@ async function main() {
   await panelPage.emulateMedia({ reducedMotion: 'reduce' });
   await panelPage.goto(PRODUCT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await clickThroughInterstitial(panelPage);
-  const panel = panelPage.locator('#trustlens-root .trustlens-panel');
+  const panel = panelPage.locator('#gradelens-root .gradelens-panel');
   await panel.waitFor({ state: 'visible', timeout: 30000 });
   const samples = [];
   for (const t of [30, 300, 1000, 2500]) {
     await panelPage.waitForTimeout(t === 30 ? 30 : t - samples.at(-1)?.t ?? t);
     const s = await panelPage.evaluate(() => {
-      const m = document.querySelector('.trustlens-medallion');
+      const m = document.querySelector('.gradelens-medallion');
       const cs = getComputedStyle(m);
       const beforeCs = getComputedStyle(m, '::before');
-      const letter = document.querySelector('.trustlens-medallion-letter');
+      const letter = document.querySelector('.gradelens-medallion-letter');
       return {
         phase: m.getAttribute('data-medallion-phase'),
         transform: cs.transform,

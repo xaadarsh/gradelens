@@ -50,7 +50,7 @@ async function main() {
       const page = await context.newPage();
       const consoleMsgs = [];
       page.on('console', (msg) => {
-        if (msg.text().includes('[TrustLens]')) {
+        if (msg.text().includes('[GradeLens]')) {
           consoleMsgs.push(`[${msg.type()}] ${msg.text()}`);
           console.log(`  [${msg.type()}] ${msg.text()}`);
         }
@@ -60,7 +60,7 @@ async function main() {
       await clickThroughInterstitial(page);
       await page.waitForTimeout(3000);
 
-      const panel = page.locator('#trustlens-root .trustlens-panel');
+      const panel = page.locator('#gradelens-root .gradelens-panel');
       let visible = false;
       try {
         await panel.waitFor({ state: 'visible', timeout: 12000 });
@@ -78,9 +78,9 @@ async function main() {
       let gradeGlyph = '';
       let shortfallLabel = null;
       if (visible) {
-        subtitle = (await page.locator('.trustlens-subtitle').textContent().catch(() => '')) ?? '';
-        gradeGlyph = (await page.locator('.trustlens-medallion-letter').textContent().catch(() => '')) ?? '';
-        const wrapLabel = page.locator('.trustlens-check-label--wrap');
+        subtitle = (await page.locator('.gradelens-subtitle').textContent().catch(() => '')) ?? '';
+        gradeGlyph = (await page.locator('.gradelens-medallion-letter').textContent().catch(() => '')) ?? '';
+        const wrapLabel = page.locator('.gradelens-check-label--wrap');
         if ((await wrapLabel.count()) > 0) {
           shortfallLabel = (await wrapLabel.textContent().catch(() => '')) ?? '';
         }

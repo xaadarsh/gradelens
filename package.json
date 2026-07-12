@@ -1,5 +1,5 @@
 {
-  "name": "trustlens",
+  "name": "gradelens",
   "description": "Pattern-based Amazon review confidence checks.",
   "private": true,
   "version": "0.0.0",

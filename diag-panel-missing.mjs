@@ -26,9 +26,9 @@ async function main() {
   }
   await page.waitForTimeout(6000);
 
-  const rootExists = await page.evaluate(() => !!document.getElementById('trustlens-root'));
-  const panelExists = await page.evaluate(() => !!document.querySelector('.trustlens-panel'));
-  console.log('trustlens-root exists:', rootExists, 'panel exists:', panelExists);
+  const rootExists = await page.evaluate(() => !!document.getElementById('gradelens-root'));
+  const panelExists = await page.evaluate(() => !!document.querySelector('.gradelens-panel'));
+  console.log('gradelens-root exists:', rootExists, 'panel exists:', panelExists);
   await page.screenshot({ path: 'verification/debug-panel-missing.png', fullPage: true });
 
   await context.close();

@@ -1,8 +1,8 @@
 import type { DeepAnalysisProvider, ScrapedAmazonPage, StatisticalAnalysis } from './types';
 
-export const SYSTEM_PROMPT = `You are TrustLens, a review-authenticity assistant. Your job is spotting PATTERNS IN THE REVIEWS THEMSELVES — signs of genuine vs. manipulated feedback — not reviewing the product. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof.
+export const SYSTEM_PROMPT = `You are GradeLens, a review-authenticity assistant. Your job is spotting PATTERNS IN THE REVIEWS THEMSELVES — signs of genuine vs. manipulated feedback — not reviewing the product. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof.
 
-CRITICAL RULE — confidence is not yours to call: TrustLens's statistical engine already computes and displays a High/Moderate/Low confidence rating elsewhere on the same screen. You must NEVER state, imply, or hedge about confidence, certainty, or sample size in your own words. Do not write "moderate confidence", "high confidence", "low confidence", "limited signal", "limited data", "small sample", "not enough reviews to be sure", or anything similar — in the verdict line OR in any bullet. If two different confidence claims appear on the same card, that's a contradiction the shopper will notice and distrust. Report FINDINGS only; leave confidence entirely to the engine.
+CRITICAL RULE — confidence is not yours to call: GradeLens's statistical engine already computes and displays a High/Moderate/Low confidence rating elsewhere on the same screen. You must NEVER state, imply, or hedge about confidence, certainty, or sample size in your own words. Do not write "moderate confidence", "high confidence", "low confidence", "limited signal", "limited data", "small sample", "not enough reviews to be sure", or anything similar — in the verdict line OR in any bullet. If two different confidence claims appear on the same card, that's a contradiction the shopper will notice and distrust. Report FINDINGS only; leave confidence entirely to the engine.
 
 Output a "quick verdict card", never an essay:
 Line 1: one short sentence, MAXIMUM 10 WORDS — the bottom-line finding, nothing else, no confidence language. Plain text, no emphasis markers.
@@ -90,7 +90,7 @@ async function runGemini(apiKey: string, prompt: string): Promise<string> {
 
   const candidate = payload.candidates?.[0];
   if (candidate?.finishReason === 'MAX_TOKENS') {
-    console.warn('[TrustLens] Gemini deep-dive response hit MAX_TOKENS and was truncated.', payload.usageMetadata);
+    console.warn('[GradeLens] Gemini deep-dive response hit MAX_TOKENS and was truncated.', payload.usageMetadata);
   }
 
   const text = candidate?.content?.parts?.map((part: { text?: string }) => part.text).join('').trim();
@@ -120,7 +120,7 @@ async function runOpenAI(apiKey: string, prompt: string): Promise<string> {
   const payload = await response.json();
 
   if (payload.status === 'incomplete') {
-    console.warn('[TrustLens] OpenAI deep-dive response was incomplete.', payload.incomplete_details);
+    console.warn('[GradeLens] OpenAI deep-dive response was incomplete.', payload.incomplete_details);
   }
 
   const text = payload.output_text

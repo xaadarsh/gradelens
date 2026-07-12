@@ -55,7 +55,7 @@ async function main() {
     }
   });
   page.on('console', (msg) => {
-    if (msg.text().includes('TrustLens')) console.log('[console]', msg.text());
+    if (msg.text().includes('GradeLens')) console.log('[console]', msg.text());
   });
 
   await page.goto(`chrome-extension://${extensionId}/options.html`, { waitUntil: 'domcontentloaded' });

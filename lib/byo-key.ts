@@ -1,6 +1,7 @@
+import { ensureStorageMigrated } from './storage-migration';
 import type { DeepAnalysisProvider, KeyTestResult, StoredSettings } from './types';
 
-const SETTINGS_KEY = 'trustlens.settings';
+const SETTINGS_KEY = 'gradelens.settings';
 
 const DEFAULT_SETTINGS: StoredSettings = {
   provider: 'gemini',
@@ -10,6 +11,7 @@ const DEFAULT_SETTINGS: StoredSettings = {
 };
 
 export async function getSettings(): Promise<StoredSettings> {
+  await ensureStorageMigrated();
   const stored = await browser.storage.local.get(SETTINGS_KEY);
   return { ...DEFAULT_SETTINGS, ...(stored[SETTINGS_KEY] ?? {}) };
 }

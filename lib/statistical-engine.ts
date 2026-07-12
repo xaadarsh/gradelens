@@ -1,7 +1,7 @@
 import type { CheckStatus, ConfidenceLevel, ReviewSample, RuleCheckResult, ScrapedAmazonPage, StatisticalAnalysis, TrustGrade } from './types';
 
 export const DISCLAIMER =
-  'TrustLens shows pattern-based confidence signals from visible review data. It does not prove whether any review, reviewer, seller, or product is fake.';
+  'GradeLens shows pattern-based confidence signals from visible review data. It does not prove whether any review, reviewer, seller, or product is fake.';
 
 // Never apologize for population-sourced grading — it's the strongest signal
 // available (Amazon's own full-population histogram/rating/count), not a
@@ -10,7 +10,7 @@ export const DISCLAIMER =
 // framing; checkConfidence below is what actually communicates "this is a
 // thinner claim than that one," not the disclaimer's tone.
 const POPULATION_DISCLAIMER =
-  'TrustLens shows pattern-based confidence signals. This grade is sourced from the product\'s full public rating history — its star-by-star breakdown, total review count, and average rating — which reflects every review Amazon has recorded, not just the handful TrustLens can read individually. The scraped sample above adds supporting detail where available.';
+  'GradeLens shows pattern-based confidence signals. This grade is sourced from the product\'s full public rating history — its star-by-star breakdown, total review count, and average rating — which reflects every review Amazon has recorded, not just the handful GradeLens can read individually. The scraped sample above adds supporting detail where available.';
 
 // A tiny visible sample (Amazon's default in-page order skews toward
 // "helpful"-voted reviews, which are disproportionately critical) is enough
@@ -33,7 +33,7 @@ export function analyzeReviews(page: ScrapedAmazonPage): StatisticalAnalysis {
   if (!hasSample && !hasCore) {
     const label = page.totalReviews > 0
       ? `Only ${page.reviews.length} of ${page.totalReviews.toLocaleString()} reviews could be read, and no star-by-star rating breakdown was found on this page.`
-      : 'TrustLens could not find a rating breakdown, an overall rating, or enough visible reviews on this page to compute a grade.';
+      : 'GradeLens could not find a rating breakdown, an overall rating, or enough visible reviews on this page to compute a grade.';
 
     return {
       grade: 'Insufficient data',
@@ -86,7 +86,7 @@ export function analyzeReviews(page: ScrapedAmazonPage): StatisticalAnalysis {
 // by the TRUE population size (totalReviewCount), not just whether a
 // histogram happens to be readable — a complete star-by-star breakdown of
 // only 14 reviews is still just 14 data points, no less noisy than any
-// other small sample, even though TrustLens can see 100% of it. The AULA
+// other small sample, even though GradeLens can see 100% of it. The AULA
 // F99 case (14 total reviews, full histogram, clean-looking grade) must
 // land Low, not Moderate, or this indicator says nothing a shopper couldn't
 // already tell from the grade alone.
@@ -109,7 +109,7 @@ function computeVerdict(grade: TrustGrade, confidence: ConfidenceLevel, checks: 
   const riskCount = checks.filter((check) => check.status === 'risk').length;
 
   // Price-vs-review-count firing red is the single most concrete,
-  // actionable finding TrustLens can surface (item 3) — when it fires, it
+  // actionable finding GradeLens can surface (item 3) — when it fires, it
   // IS the verdict, not a footnote buried under a generic grade-based line.
   const priceCheck = checks.find((check) => check.id === 'price-vs-reviews');
   if (priceCheck?.status === 'risk') {
@@ -159,7 +159,7 @@ function hasPopulationCore(page: ScrapedAmazonPage): boolean {
 function checkHistogramShape(page: ScrapedAmazonPage): RuleCheckResult {
   const byStar = new Map(page.ratingHistogram.map((entry) => [entry.star, entry.percent]));
   if (byStar.size < MIN_HISTOGRAM_LEVELS) {
-    return result('histogram-shape', 'Rating pattern', 'unknown', 60, "TrustLens couldn't read the star-by-star rating breakdown on this page.");
+    return result('histogram-shape', 'Rating pattern', 'unknown', 60, "GradeLens couldn't read the star-by-star rating breakdown on this page.");
   }
 
   const p5 = byStar.get(5) ?? 0;
@@ -170,7 +170,7 @@ function checkHistogramShape(page: ScrapedAmazonPage): RuleCheckResult {
   const total = p5 + p4 + p3 + p2 + p1;
 
   if (Math.abs(total - 100) > HISTOGRAM_SUM_TOLERANCE) {
-    return result('histogram-shape', 'Rating pattern', 'unknown', 60, "The star-by-star numbers on this page didn't add up to something TrustLens could trust.");
+    return result('histogram-shape', 'Rating pattern', 'unknown', 60, "The star-by-star numbers on this page didn't add up to something GradeLens could trust.");
   }
 
   const middle = p4 + p3 + p2;
@@ -237,7 +237,7 @@ function checkReviewVelocity(reviews: ReviewSample[]): RuleCheckResult {
 function checkAgeRatio(page: ScrapedAmazonPage): RuleCheckResult {
   const firstAvailable = parseLooseDate(page.productFirstAvailable);
   if (!firstAvailable || !page.totalReviewCount) {
-    return result('age-ratio', 'Review count vs age', 'unknown', 60, 'TrustLens could not read both product age and total review count from this page variant.');
+    return result('age-ratio', 'Review count vs age', 'unknown', 60, 'GradeLens could not read both product age and total review count from this page variant.');
   }
 
   const ageMonths = Math.max(1, monthsBetween(firstAvailable, new Date()));
@@ -273,11 +273,11 @@ function checkRepeatedLanguage(reviews: ReviewSample[]): RuleCheckResult {
     return result('repeated-language', 'Repeated language', 'watch', 70, 'A small amount of repeated phrasing appears in the visible review sample.');
   }
 
-  return result('repeated-language', 'Repeated language', 'pass', 94, 'TrustLens did not find repeated four-word phrasing across the visible review sample.');
+  return result('repeated-language', 'Repeated language', 'pass', 94, 'GradeLens did not find repeated four-word phrasing across the visible review sample.');
 }
 
 // Amazon's own aggregate rating and review count reflect the full review
-// population, not the small (and "helpful"-vote-biased) sample TrustLens can
+// population, not the small (and "helpful"-vote-biased) sample GradeLens can
 // scrape. Secondary to checkHistogramShape (which reads the same population
 // but at full star-by-star resolution), this still carries extra weight
 // over any single sample-derived check, and is often the only population
@@ -285,7 +285,7 @@ function checkRepeatedLanguage(reviews: ReviewSample[]): RuleCheckResult {
 function checkOverallRatingEvidence(page: ScrapedAmazonPage): RuleCheckResult {
   const { averageRating, totalReviewCount } = page;
   if (averageRating === null || !totalReviewCount) {
-    return result('overall-rating', 'Rating & review count', 'unknown', 60, "TrustLens couldn't read this product's overall star rating or total review count.");
+    return result('overall-rating', 'Rating & review count', 'unknown', 60, "GradeLens couldn't read this product's overall star rating or total review count.");
   }
 
   const summary = `${averageRating.toFixed(1)}★ average across ${totalReviewCount.toLocaleString()} reviews`;
@@ -305,7 +305,7 @@ function checkOverallRatingEvidence(page: ScrapedAmazonPage): RuleCheckResult {
   return result('overall-rating', 'Rating & review count', 'watch', 60, `${summary} — not quite enough here yet to call this a strong or weak track record.`);
 }
 
-// The single most concrete, actionable insight TrustLens can offer that
+// The single most concrete, actionable insight GradeLens can offer that
 // competitors don't: a genuinely high-priced product with very few reviews
 // is suspicious in a way a cheap impulse-buy product with few reviews just
 // isn't — buyers of expensive items are exactly as likely (often more so)
@@ -328,7 +328,7 @@ const SOMEWHAT_THIN_REVIEW_COUNT = 150;
 function checkPriceVsReviewCount(page: ScrapedAmazonPage): RuleCheckResult {
   const { price, priceCurrency, totalReviewCount } = page;
   if (price === null || !priceCurrency || !totalReviewCount) {
-    return result('price-vs-reviews', 'Reviews vs. price', 'unknown', 60, "TrustLens couldn't read this product's price to compare against its review count.");
+    return result('price-vs-reviews', 'Reviews vs. price', 'unknown', 60, "GradeLens couldn't read this product's price to compare against its review count.");
   }
 
   const threshold = HIGH_PRICE_THRESHOLDS[priceCurrency] ?? DEFAULT_HIGH_PRICE_THRESHOLD;

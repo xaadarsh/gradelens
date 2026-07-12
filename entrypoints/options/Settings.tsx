@@ -12,7 +12,7 @@ import { checkProStatus, getCachedLicenseStatus, saveLicenseKey } from '@/lib/li
 import { FREE_TRIAL_LIMIT, getRemainingTrials } from '@/lib/usage-limits';
 import type { DeepAnalysisProvider, KeyTestResult, LicenseStatus, StoredSettings, ThemePreference } from '@/lib/types';
 
-const PRIVACY_POLICY_URL = 'https://xaadarsh.com/trustlens/privacy';
+const PRIVACY_POLICY_URL = 'https://xaadarsh.com/gradelens/privacy';
 const SUPPORT_EMAIL = 'aadarshraj380@gmail.com';
 
 function Settings() {
@@ -103,7 +103,7 @@ function Settings() {
       <header className="settings-header">
         <div className="settings-brand">
           <ShieldIcon className="settings-shield" />
-          <p className="settings-wordmark">TrustLens</p>
+          <p className="settings-wordmark">GradeLens</p>
         </div>
         <span className={license.pro ? 'pill pro' : 'pill'}>{license.pro ? 'Pro' : 'Free'}</span>
       </header>

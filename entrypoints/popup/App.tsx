@@ -52,7 +52,7 @@ function App() {
       <header className="popup-header">
         <div className="popup-brand">
           <ShieldIcon className="popup-shield" />
-          <p>TrustLens</p>
+          <p>GradeLens</p>
         </div>
         <span className={isPro ? 'pill pro' : 'pill'}>{isPro ? 'Pro' : 'Free'}</span>
       </header>

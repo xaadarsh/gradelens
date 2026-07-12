@@ -1,4 +1,4 @@
-// diag-amazon-in-mount.mjs — one-off diagnostic to inspect why the TrustLens
+// diag-amazon-in-mount.mjs — one-off diagnostic to inspect why the GradeLens
 // panel fails to mount on amazon.in dp/ pages for ASINs that work fine on
 // amazon.com. Loads the built extension, navigates to each failing URL, and
 // dumps DOM info around where the rating summary should be so we can find
@@ -45,7 +45,7 @@ async function main() {
 
   const page = await context.newPage();
   page.on('console', (msg) => {
-    if (msg.text().includes('[TrustLens]')) console.log(`[console] ${msg.text()}`);
+    if (msg.text().includes('[GradeLens]')) console.log(`[console] ${msg.text()}`);
   });
 
   try {

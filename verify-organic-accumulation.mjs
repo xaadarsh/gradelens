@@ -57,11 +57,11 @@ async function clickThroughInterstitial(page) {
 
 async function readPanelState(page) {
   return page.evaluate(() => {
-    const subtitle = document.querySelector('.trustlens-subtitle')?.textContent?.trim() ?? '';
-    const grade = document.querySelector('.trustlens-medallion-letter')?.textContent?.trim() ?? '';
-    const checks = [...document.querySelectorAll('.trustlens-check')].map((row) => ({
+    const subtitle = document.querySelector('.gradelens-subtitle')?.textContent?.trim() ?? '';
+    const grade = document.querySelector('.gradelens-medallion-letter')?.textContent?.trim() ?? '';
+    const checks = [...document.querySelectorAll('.gradelens-check')].map((row) => ({
       status: row.getAttribute('data-status'),
-      label: row.querySelector('.trustlens-check-label')?.textContent?.trim() ?? '',
+      label: row.querySelector('.gradelens-check-label')?.textContent?.trim() ?? '',
     }));
     return { subtitle, grade, checks };
   });
@@ -105,7 +105,7 @@ async function verifyProduct(context, product) {
   page.on('console', (msg) => {
     const line = `[${msg.type()}] ${msg.text()}`;
     consoleLog.push(line);
-    if (msg.text().includes('[TrustLens]')) {
+    if (msg.text().includes('[GradeLens]')) {
       console.log(line);
       if (/Organic accumulation/.test(msg.text())) organicLogLines.push(msg.text());
       if (/sign-in|signing in|stopping scan/i.test(msg.text())) gateLogLines.push(msg.text());
@@ -122,7 +122,7 @@ async function verifyProduct(context, product) {
     await page.goto(product.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await clickThroughInterstitial(page);
 
-    const panel = page.locator('#trustlens-root .trustlens-panel');
+    const panel = page.locator('#gradelens-root .gradelens-panel');
     await panel.waitFor({ state: 'visible', timeout: 20000 });
     result.panelMounted = true;
 

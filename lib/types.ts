@@ -22,7 +22,7 @@ export interface ReviewSample {
   vine: boolean;
 }
 
-/** One row of Amazon's star-rating histogram (e.g. "54% gave 5 stars"), computed by Amazon from the full review population — not TrustLens's small scraped sample. */
+/** One row of Amazon's star-rating histogram (e.g. "54% gave 5 stars"), computed by Amazon from the full review population — not GradeLens's small scraped sample. */
 export interface RatingHistogramEntry {
   star: 1 | 2 | 3 | 4 | 5;
   /** 0-100. */
@@ -38,7 +38,7 @@ export interface ScrapedAmazonPage {
   totalReviewCount: number | null;
   productFirstAvailable: string | null;
   reviews: ReviewSample[];
-  /** Star-by-star population breakdown. Empty if fewer than 3 of the 5 levels could be read (page variant TrustLens doesn't recognize) — the grading engine falls back to averageRating/totalReviewCount alone in that case. */
+  /** Star-by-star population breakdown. Empty if fewer than 3 of the 5 levels could be read (page variant GradeLens doesn't recognize) — the grading engine falls back to averageRating/totalReviewCount alone in that case. */
   ratingHistogram: RatingHistogramEntry[];
   /** Explicit count of reviews actually scraped — mirrors reviews.length, kept as its own field for UI/API stability as this grows across the lazy-load and additional-page-fetch enhancements. */
   reviewsScanned: number;
