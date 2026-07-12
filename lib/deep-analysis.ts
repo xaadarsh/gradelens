@@ -1,6 +1,12 @@
 import type { DeepAnalysisProvider, ScrapedAmazonPage, StatisticalAnalysis } from './types';
 
-export const SYSTEM_PROMPT = `You are TrustLens, a review-pattern assistant. Use cautious, pattern/confidence language only. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof. Explain what the visible data suggests, what is uncertain, and what a shopper may want to inspect next. Respond in plain text only — never use markdown formatting (no **bold**, no *italics*, no # headers, no markdown list markers). For list items, write plain lines starting with "1.", "2.", etc.`;
+export const SYSTEM_PROMPT = `You are TrustLens, a review-pattern assistant. Use cautious, pattern/confidence language only. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof. Respond in plain text only — never use markdown formatting (no **bold**, no *italics*, no # headers, no markdown list markers like - or *).
+
+Output a "quick verdict card", never an essay:
+Line 1: one short sentence — the bottom-line verdict, nothing else.
+Then 3-5 bullet lines (never more than 5), each its own line, each ONE line only — max about 12-15 words, never a paragraph, never wrapping.
+Each bullet starts with exactly one symbol for its sentiment: ✅ positive/reassuring, ⚠️ caution/concern, 🔍 neutral observation, ⭐ standout point.
+Lead each bullet with the key word or finding first — no filler like "It appears that" or "One thing to note is".`;
 
 export interface DeepAnalysisInput {
   provider: DeepAnalysisProvider;
@@ -31,7 +37,18 @@ function buildPrompt(page: ScrapedAmazonPage, statistical: StatisticalAnalysis):
     `Rule checks: ${statistical.checks.map((check) => `${check.label}: ${check.status} (${check.detail})`).join(' ')}`,
     'Visible review sample:',
     reviewLines.join('\n'),
-    'Write a concise shopper-facing deep dive as 3-5 short numbered points (e.g. "1. ...", "2. ..."). Plain text only — do not use any markdown symbols (**, *, #, -, backticks). Use pattern/confidence language only.',
+    [
+      'Write the deep dive as a quick verdict card, exactly this shape:',
+      'Line 1: one-sentence bottom-line verdict.',
+      'Then 3-5 bullets, one short line each (max ~12-15 words), each starting with ✅, ⚠️, 🔍, or ⭐ based on sentiment. Lead with the key word. No paragraphs. Plain text only — no markdown symbols (**, *, #, -, backticks).',
+      '',
+      'Example of the target shape (do not reuse this content — match the format only):',
+      'Likely genuine — natural review pattern, minor cautions.',
+      '✅ Natural rating spread, not manipulated',
+      '⚠️ A few reports of near-expiry stock — check the date on arrival',
+      '🔍 Texture praised as lightweight, absorbs fast',
+      '⚠️ Results mixed — patch-test the retinol first',
+    ].join('\n'),
   ].join('\n\n');
 }
 
@@ -114,6 +131,11 @@ function stripMarkdown(text: string | undefined): string {
     .replace(/(\*\*|__)(.*?)\1/gs, '$2')
     .replace(/(\*|_)(.*?)\1/gs, '$2')
     .replace(/^#{1,6}\s+/gm, '')
+    // Stray list-marker habits (numbered "1. " or dash/dot bullets) the
+    // model might still lead a line with instead of/before the sentiment
+    // emoji the prompt asks for — emoji themselves (✅ ⚠️ 🔍 ⭐) are
+    // untouched by any pass here, only ASCII markdown punctuation is.
+    .replace(/^\s*\d+[.)]\s+/gm, '')
     .replace(/^\s*[-*•]\s+/gm, '')
     .replace(/`{1,3}([^`]*)`{1,3}/g, '$1')
     .replace(/[*_#`]/g, '')

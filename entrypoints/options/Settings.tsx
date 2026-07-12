@@ -60,14 +60,23 @@ function Settings() {
   // Return the outcome instead of pushing it into the page-bottom `status`
   // string — KeyRow shows it inline next to the button that triggered it.
   async function saveKey(provider: DeepAnalysisProvider): Promise<KeyTestResult> {
-    const draft = provider === 'gemini' ? draftGeminiKey : draftOpenAIKey;
+    const draft = (provider === 'gemini' ? draftGeminiKey : draftOpenAIKey).trim();
     if (draft.includes('*')) {
       return { ok: true, message: 'Key is already saved.' };
     }
+    // Guards against wiping an already-saved key: an empty draft here used
+    // to come from the field's own onFocus handler clearing the masked
+    // display the instant it was clicked (fixed in KeyRow below), and
+    // clicking Save right after would have persisted that empty string
+    // over the real stored key. Keeping this check even with that fixed —
+    // a stray empty Save should never be able to erase a saved key.
+    if (!draft) {
+      return { ok: false, message: 'Enter an API key first.' };
+    }
 
     const next = provider === 'gemini'
-      ? await saveSettings({ geminiKey: draft.trim() })
-      : await saveSettings({ openaiKey: draft.trim() });
+      ? await saveSettings({ geminiKey: draft })
+      : await saveSettings({ openaiKey: draft });
     setSettings(next);
     setDraftGeminiKey(maskApiKey(next.geminiKey));
     setDraftOpenAIKey(maskApiKey(next.openaiKey));
@@ -254,8 +263,14 @@ function KeyRow(props: {
           {props.label}
           <input
             autoComplete="off"
-            onFocus={() => {
-              if (props.value.includes('*')) props.onChange('');
+            onFocus={(event) => {
+              // Select-all, don't clear: a plain click/tab into the field
+              // was wiping the masked value on focus alone, before any
+              // typing — the field looked like the saved key had vanished.
+              // Selecting it instead means clicking-away leaves it
+              // untouched, while typing still naturally replaces the
+              // selected mask with the new key (standard input behavior).
+              if (props.value.includes('*')) event.target.select();
             }}
             onChange={(event) => props.onChange(event.target.value)}
             placeholder="Paste API key"
