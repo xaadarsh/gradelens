@@ -186,6 +186,64 @@
   animation-delay: 180ms;
 }
 
+/* Local grading history (item 6) — last few graded products, most recent
+   first. No backend: purely a chrome.storage.local readout. */
+.history-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  margin: 0 16px 12px;
+  padding: 12px 14px;
+  animation: tl-pop-in 320ms var(--ease-spring) both;
+  animation-delay: 200ms;
+}
+
+.history-heading {
+  color: var(--text-secondary);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.history-list {
+  display: grid;
+  gap: 7px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.history-row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.history-grade {
+  align-items: center;
+  background: var(--ink);
+  border-radius: 5px;
+  color: var(--glyph);
+  display: flex;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  height: 18px;
+  justify-content: center;
+  width: 18px;
+}
+
+.history-title {
+  color: var(--ink);
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 button.primary {
   background: var(--ink);
   border: 0;

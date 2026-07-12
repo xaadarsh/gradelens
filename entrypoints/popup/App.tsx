@@ -6,10 +6,13 @@
 
 import { useEffect, useState } from 'react';
 import { getSettings, saveSettings } from '@/lib/byo-key';
+import { getHistory, type HistoryEntry } from '@/lib/history';
 import { checkProStatus } from '@/lib/license';
 import { FREE_TRIAL_LIMIT, getRemainingTrials } from '@/lib/usage-limits';
 import type { StoredSettings } from '@/lib/types';
 import './App.css';
+
+const HISTORY_PREVIEW_COUNT = 5;
 
 // Deliberately never themed off the user's Appearance setting or the OS —
 // same reasoning as TrustPanel. Light-only, always.
@@ -17,13 +20,20 @@ function App() {
   const [settings, setSettings] = useState<StoredSettings>({ provider: 'gemini', devProOverride: false, enabled: true, theme: 'light' });
   const [isPro, setIsPro] = useState(false);
   const [remainingTrials, setRemainingTrials] = useState(FREE_TRIAL_LIMIT);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
     async function load() {
-      const [storedSettings, license, remaining] = await Promise.all([getSettings(), checkProStatus(), getRemainingTrials()]);
+      const [storedSettings, license, remaining, storedHistory] = await Promise.all([
+        getSettings(),
+        checkProStatus(),
+        getRemainingTrials(),
+        getHistory(),
+      ]);
       setSettings(storedSettings);
       setIsPro(license.pro);
       setRemainingTrials(remaining);
+      setHistory(storedHistory);
     }
     load();
   }, []);
@@ -71,6 +81,20 @@ function App() {
       </div>
 
       {!isPro ? <p className="trial-summary">{remainingTrials} of {FREE_TRIAL_LIMIT} free AI analyses left</p> : null}
+
+      {history.length > 0 ? (
+        <div className="history-card">
+          <p className="history-heading">Recent checks</p>
+          <ul className="history-list">
+            {history.slice(0, HISTORY_PREVIEW_COUNT).map((entry) => (
+              <li className="history-row" key={entry.asin}>
+                <span className="history-grade" data-grade={entry.grade}>{entry.grade}</span>
+                <span className="history-title">{entry.title}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <button className="primary" onClick={openSettings}>Open Settings</button>
     </main>

@@ -1,10 +1,16 @@
-import type { CheckStatus, ReviewSample, RuleCheckResult, ScrapedAmazonPage, StatisticalAnalysis, TrustGrade } from './types';
+import type { CheckStatus, ConfidenceLevel, ReviewSample, RuleCheckResult, ScrapedAmazonPage, StatisticalAnalysis, TrustGrade } from './types';
 
 export const DISCLAIMER =
   'TrustLens shows pattern-based confidence signals from visible review data. It does not prove whether any review, reviewer, seller, or product is fake.';
 
+// Never apologize for population-sourced grading — it's the strongest signal
+// available (Amazon's own full-population histogram/rating/count), not a
+// fallback taken because something else came up short. A product with 14
+// total reviews and a product with 190,000 both get this same confident
+// framing; checkConfidence below is what actually communicates "this is a
+// thinner claim than that one," not the disclaimer's tone.
 const POPULATION_DISCLAIMER =
-  'TrustLens shows pattern-based confidence signals. This grade is sourced from the product\'s public rating history (star-by-star breakdown, total reviews, and average rating), not a per-review scan, because too few individual reviews could be read.';
+  'TrustLens shows pattern-based confidence signals. This grade is sourced from the product\'s full public rating history — its star-by-star breakdown, total review count, and average rating — which reflects every review Amazon has recorded, not just the handful TrustLens can read individually. The scraped sample above adds supporting detail where available.';
 
 // A tiny visible sample (Amazon's default in-page order skews toward
 // "helpful"-voted reviews, which are disproportionately critical) is enough
@@ -35,6 +41,8 @@ export function analyzeReviews(page: ScrapedAmazonPage): StatisticalAnalysis {
       sampleSize: page.reviews.length,
       checks: [{ id: 'sample-size', label, status: 'unknown', score: 0, detail: label }],
       disclaimer: DISCLAIMER,
+      confidence: 'Low',
+      verdict: 'Not enough data on this page to make a call — read a handful of recent reviews yourself before deciding.',
     };
   }
 
@@ -59,14 +67,64 @@ export function analyzeReviews(page: ScrapedAmazonPage): StatisticalAnalysis {
     checks.reduce((sum, check) => sum + check.score * checkWeight(check.id), 0) /
       checks.reduce((sum, check) => sum + checkWeight(check.id), 0),
   );
+  const grade = gradeFromScore(score);
+  const confidence = computeConfidence(page, hasSample);
 
   return {
-    grade: gradeFromScore(score),
+    grade,
     score,
     sampleSize: page.reviews.length,
     checks,
     disclaimer: hasSample ? DISCLAIMER : POPULATION_DISCLAIMER,
+    confidence,
+    verdict: computeVerdict(grade, confidence, checks),
   };
+}
+
+// Confidence answers a different question than the grade does: not "is this
+// product good" but "how much can this specific grade be leaned on." Driven
+// by the TRUE population size (totalReviewCount), not just whether a
+// histogram happens to be readable — a complete star-by-star breakdown of
+// only 14 reviews is still just 14 data points, no less noisy than any
+// other small sample, even though TrustLens can see 100% of it. The AULA
+// F99 case (14 total reviews, full histogram, clean-looking grade) must
+// land Low, not Moderate, or this indicator says nothing a shopper couldn't
+// already tell from the grade alone.
+function computeConfidence(page: ScrapedAmazonPage, hasSample: boolean): ConfidenceLevel {
+  const totalReviews = page.totalReviewCount ?? 0;
+
+  if (totalReviews >= 1000) return 'High';
+  // A large-enough population (even without perfect histogram resolution)
+  // or a genuinely large scraped-and-read sample are each independently
+  // enough to call it Moderate.
+  if (totalReviews >= 200 || hasSample) return 'Moderate';
+  return 'Low';
+}
+
+// The one-sentence decision a shopper actually wants: not "here is a report
+// card" but "should I buy this." Confidence tempers the grade's own
+// language — a clean-looking grade backed by thin data still gets a hedge,
+// because that's the honest claim, not the flattering one.
+function computeVerdict(grade: TrustGrade, confidence: ConfidenceLevel, checks: RuleCheckResult[]): string {
+  const riskCount = checks.filter((check) => check.status === 'risk').length;
+
+  if (grade === 'A' || grade === 'B') {
+    if (confidence === 'Low') {
+      return 'Signals look clean, but the review base is small — skim a few recent reviews yourself before deciding.';
+    }
+    return 'Signals look clean — buy with normal caution.';
+  }
+
+  if (grade === 'C') {
+    return confidence === 'Low'
+      ? 'Signals are mixed and the review base is thin — worth reading recent reviews before deciding.'
+      : 'Signals are mixed — worth a quick look at recent reviews before buying.';
+  }
+
+  // D or F
+  return riskCount >= 2
+    ? 'Several signals suggest caution — read recent reviews carefully before buying.'
+    : 'At least one signal suggests caution — read recent reviews before buying.';
 }
 
 // True whenever there's population-level evidence to grade from at all —

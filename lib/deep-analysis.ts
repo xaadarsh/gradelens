@@ -1,12 +1,14 @@
 import type { DeepAnalysisProvider, ScrapedAmazonPage, StatisticalAnalysis } from './types';
 
-export const SYSTEM_PROMPT = `You are TrustLens, a review-pattern assistant. Use cautious, pattern/confidence language only. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof. Respond in plain text only — never use markdown formatting (no **bold**, no *italics*, no # headers, no markdown list markers like - or *).
+export const SYSTEM_PROMPT = `You are TrustLens, a review-pattern assistant. Use cautious, pattern/confidence language only. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof.
 
 Output a "quick verdict card", never an essay:
-Line 1: one short sentence — the bottom-line verdict, nothing else.
+Line 1: one short sentence — the bottom-line verdict, nothing else. Plain text, no emphasis markers on this line.
 Then 3-5 bullet lines (never more than 5), each its own line, each ONE line only — max about 12-15 words, never a paragraph, never wrapping.
 Each bullet starts with exactly one symbol for its sentiment: ✅ positive/reassuring, ⚠️ caution/concern, 🔍 neutral observation, ⭐ standout point.
-Lead each bullet with the key word or finding first — no filler like "It appears that" or "One thing to note is".`;
+Lead each bullet with the key word or finding first — no filler like "It appears that" or "One thing to note is".
+Within each bullet, wrap the single most important 2-4 word phrase — the key finding — in **double asterisks**. Exactly one such span per bullet, never the whole sentence, never zero.
+That double-asterisk span is the ONLY formatting allowed anywhere in the response — no *italics*, no # headers, no - or * list dashes, no backticks.`;
 
 export interface DeepAnalysisInput {
   provider: DeepAnalysisProvider;
@@ -39,15 +41,16 @@ function buildPrompt(page: ScrapedAmazonPage, statistical: StatisticalAnalysis):
     reviewLines.join('\n'),
     [
       'Write the deep dive as a quick verdict card, exactly this shape:',
-      'Line 1: one-sentence bottom-line verdict.',
-      'Then 3-5 bullets, one short line each (max ~12-15 words), each starting with ✅, ⚠️, 🔍, or ⭐ based on sentiment. Lead with the key word. No paragraphs. Plain text only — no markdown symbols (**, *, #, -, backticks).',
+      'Line 1: one-sentence bottom-line verdict, no emphasis markers.',
+      'Then 3-5 bullets, one short line each (max ~12-15 words), each starting with ✅, ⚠️, 🔍, or ⭐ based on sentiment. Lead with the key word. No paragraphs.',
+      'Within each bullet, wrap the one key 2-4 word phrase in **double asterisks** — exactly one span per bullet. No other markdown symbols anywhere (no *italics*, no #, no - list dashes, no backticks).',
       '',
       'Example of the target shape (do not reuse this content — match the format only):',
       'Likely genuine — natural review pattern, minor cautions.',
-      '✅ Natural rating spread, not manipulated',
-      '⚠️ A few reports of near-expiry stock — check the date on arrival',
-      '🔍 Texture praised as lightweight, absorbs fast',
-      '⚠️ Results mixed — patch-test the retinol first',
+      '✅ **Natural rating spread**, not manipulated',
+      '⚠️ Reports of **near-expiry stock** — check the date on arrival',
+      '🔍 Texture praised as **lightweight, fast-absorbing**',
+      '⚠️ **Mixed results** — patch-test the retinol first',
     ].join('\n'),
   ].join('\n\n');
 }
@@ -120,15 +123,34 @@ async function runOpenAI(apiKey: string, prompt: string): Promise<string> {
   return stripMarkdown(text) || 'No deep-dive text returned.';
 }
 
-// Defense-in-depth: the prompt asks for plain text, but LLMs don't reliably
-// follow "no markdown" instructions for emphasis, and a response cut off
-// mid-token can leave an unpaired ** with no closing match for the paired
-// stripping passes below to catch — so a final unconditional sweep removes
-// any markdown-ish symbol still standing.
+// Defense-in-depth: the prompt asks for exactly one **emphasis** span per
+// bullet and nothing else, but LLMs don't reliably follow markdown
+// constraints, and a response cut off mid-token can leave stray/unpaired
+// markers with no closing match for the paired stripping passes to catch —
+// so a final unconditional sweep removes anything markdown-ish still
+// standing. The one exception is well-formed **pairs**, which TrustPanel
+// renders as styled emphasis spans (see renderDeepDiveBody) — those are
+// protected here with placeholder tokens so the later stripping passes
+// (single *italic*/_italic_, stray leftover *, etc.) can't eat into them.
 function stripMarkdown(text: string | undefined): string {
   if (!text) return '';
-  return text
-    .replace(/(\*\*|__)(.*?)\1/gs, '$2')
+
+  const protectedSpans: string[] = [];
+  // No whitespace and none of *, _, #, ` in the token — whitespace padding
+  // would get collapsed asymmetrically by the trailing whitespace-collapse
+  // pass (losing the original spacing around a restored span), and any of
+  // those punctuation chars would just get eaten by the stripping passes
+  // below, placeholder included.
+  const PLACEHOLDER = (i: number) => `@@EMPH${i}@@`;
+
+  let working = text.replace(/\*\*(.+?)\*\*/gs, (_match, inner: string) => {
+    const token = PLACEHOLDER(protectedSpans.length);
+    protectedSpans.push(inner);
+    return token;
+  });
+
+  working = working
+    .replace(/__(.*?)__/gs, '$1')
     .replace(/(\*|_)(.*?)\1/gs, '$2')
     .replace(/^#{1,6}\s+/gm, '')
     // Stray list-marker habits (numbered "1. " or dash/dot bullets) the
@@ -141,4 +163,6 @@ function stripMarkdown(text: string | undefined): string {
     .replace(/[*_#`]/g, '')
     .replace(/[ \t]{2,}/g, ' ')
     .trim();
+
+  return working.replace(/@@EMPH(\d+)@@/g, (_match, index: string) => `**${protectedSpans[Number(index)]}**`);
 }

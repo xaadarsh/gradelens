@@ -23,7 +23,14 @@ export default defineContentScript({
     if (!settings.enabled) return;
 
     if (!isProductPage()) return;
-    mountWhenReady();
+    // mountWhenReady is async and unawaited by design (main() must return
+    // immediately) — but that means an unexpected throw anywhere inside it
+    // would otherwise become an unhandled promise rejection, which Chrome
+    // surfaces as a visible console error. Graceful degradation (item 4)
+    // means every failure path resolves to a clean, silent state instead.
+    mountWhenReady().catch((err) => {
+      console.warn('[TrustLens] mountWhenReady failed unexpectedly — panel not mounted.', err);
+    });
   },
 });
 
@@ -253,7 +260,13 @@ const selectors = {
   // product page — it's a <ul>, not an actual <table>, despite the id). The
   // rest are fallbacks for page variants that don't use that id.
   ratingHistogramTable: ['#histogramTable', '[data-hook="histogram-table"]', '[data-hook="rating-histogram"]', '.cr-widget-Histogram', '#cr-summarization-histogram'],
-  mountAnchor: ['#averageCustomerReviews', '#averageCustomerReviews_feature_div', '[data-hook="average-star-rating"]', '#reviewsMedley', '[data-hook="reviews-medley-widget"]'],
+  // Fallback chain, most-specific first. The last two entries are
+  // deliberately NOT review/rating-section-specific — #productTitle is
+  // present on essentially every Amazon product page regardless of how the
+  // reviews widget itself is laid out, so if Amazon ever restructures away
+  // from every rating-summary selector above, the panel still has somewhere
+  // to mount instead of silently vanishing (item 5: layout resilience).
+  mountAnchor: ['#averageCustomerReviews', '#averageCustomerReviews_feature_div', '[data-hook="average-star-rating"]', '#reviewsMedley', '[data-hook="reviews-medley-widget"]', '#productTitle', '#centerCol'],
 };
 
 function queryFirst(group: keyof typeof selectors, root: ParentNode): Element | null {
@@ -359,7 +372,26 @@ function scrapeAmazonPage(root: Document): ScrapedAmazonPage & PageAnchors {
     console.warn('[TrustLens] Date First Available was not found in the visible product details blocks.');
   }
 
+  checkSelectorHealth(page);
+
   return page;
+}
+
+// Silent self-check (item 5): the one combination that specifically signals
+// a selector broken by an Amazon layout change, as opposed to an honestly
+// low-review product — Amazon itself reports reviews exist (totalReviews >
+// 0), but TrustLens found neither individual review cards NOR a histogram.
+// A genuinely sparse product (few reviews) still normally has a working
+// histogram; this combination means the scrape came back empty on a page
+// that isn't actually empty. Console-only, never surfaced in the UI — the
+// grading engine already degrades to an honest "Insufficient data" read
+// regardless, this is purely a developer-facing early warning.
+function checkSelectorHealth(page: ScrapedAmazonPage): void {
+  if (page.totalReviews > 0 && page.reviews.length === 0 && page.ratingHistogram.length === 0) {
+    console.warn(
+      `[TrustLens] SELECTOR HEALTH: this page reports ${page.totalReviews.toLocaleString()} total review(s) but TrustLens scraped 0 review cards and found no rating histogram — likely a broken selector after an Amazon layout change, not a low-review product.`,
+    );
+  }
 }
 
 function scrapeReview(

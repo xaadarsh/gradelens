@@ -2,6 +2,9 @@ export type TrustGrade = 'A' | 'B' | 'C' | 'D' | 'F' | 'Insufficient data';
 
 export type CheckStatus = 'pass' | 'watch' | 'risk' | 'unknown';
 
+/** How much weight the grade itself can bear — a "B" from 2,000 reviews and a "B" from 14 are not the same claim, so this rides alongside the grade rather than being folded into it. */
+export type ConfidenceLevel = 'High' | 'Moderate' | 'Low';
+
 export type DeepAnalysisProvider = 'gemini' | 'openai';
 
 // Settings-page-only preference — TrustPanel and Popup are hard-locked to
@@ -57,6 +60,10 @@ export interface StatisticalAnalysis {
   sampleSize: number;
   checks: RuleCheckResult[];
   disclaimer: string;
+  /** High/Moderate/Low — how much population/sample evidence backs the grade, independent of what the grade itself says. */
+  confidence: ConfidenceLevel;
+  /** One plain-language sentence telling the shopper what to actually do with this grade — a decision, not a report card. */
+  verdict: string;
 }
 
 export interface StoredSettings {
