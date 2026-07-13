@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getProviderKey, getSettings } from '@/lib/byo-key';
 import { runDeepAnalysis } from '@/lib/deep-analysis';
 import { recordHistoryEntry } from '@/lib/history';
-import { checkProStatus, getDevProOverride } from '@/lib/license';
+import { checkProStatus } from '@/lib/license';
 import { analyzeReviews } from '@/lib/statistical-engine';
 import { FREE_TRIAL_LIMIT, getRemainingTrials, hasTrialsLeft, incrementUsage } from '@/lib/usage-limits';
 import type { CheckStatus, ScrapedAmazonPage, StatisticalAnalysis, TrustGrade } from '@/lib/types';
@@ -138,13 +138,8 @@ export function TrustPanel({ page }: TrustPanelProps) {
 
   useEffect(() => {
     async function loadAccessState() {
-      const [license, devOverride, settings, remaining] = await Promise.all([
-        checkProStatus(),
-        getDevProOverride(),
-        getSettings(),
-        getRemainingTrials(),
-      ]);
-      setIsPro(Boolean(license.pro || (import.meta.env.DEV && (devOverride || settings.devProOverride))));
+      const [license, remaining] = await Promise.all([checkProStatus(), getRemainingTrials()]);
+      setIsPro(license.pro);
       setRemainingTrials(remaining);
     }
     loadAccessState().catch(() => undefined);
@@ -156,13 +151,8 @@ export function TrustPanel({ page }: TrustPanelProps) {
     setDeepDive('');
 
     try {
-      const [license, devOverride, settings, trialAvailable] = await Promise.all([
-        checkProStatus(),
-        getDevProOverride(),
-        getSettings(),
-        hasTrialsLeft(),
-      ]);
-      const hasProAccess = Boolean(license.pro || (import.meta.env.DEV && (devOverride || settings.devProOverride)));
+      const [license, settings, trialAvailable] = await Promise.all([checkProStatus(), getSettings(), hasTrialsLeft()]);
+      const hasProAccess = license.pro;
       setIsPro(hasProAccess);
 
       if (!hasProAccess && !trialAvailable) {

@@ -5,7 +5,6 @@ const SETTINGS_KEY = 'gradelens.settings';
 
 const DEFAULT_SETTINGS: StoredSettings = {
   provider: 'gemini',
-  devProOverride: false,
   enabled: true,
   theme: 'light',
 };

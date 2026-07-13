@@ -74,7 +74,6 @@ export interface StoredSettings {
   geminiKey?: string;
   openaiKey?: string;
   provider: DeepAnalysisProvider;
-  devProOverride: boolean;
   enabled: boolean;
   theme: ThemePreference;
 }

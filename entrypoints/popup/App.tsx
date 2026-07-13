@@ -17,7 +17,7 @@ const HISTORY_PREVIEW_COUNT = 5;
 // Deliberately never themed off the user's Appearance setting or the OS —
 // same reasoning as TrustPanel. Light-only, always.
 function App() {
-  const [settings, setSettings] = useState<StoredSettings>({ provider: 'gemini', devProOverride: false, enabled: true, theme: 'light' });
+  const [settings, setSettings] = useState<StoredSettings>({ provider: 'gemini', enabled: true, theme: 'light' });
   const [isPro, setIsPro] = useState(false);
   const [remainingTrials, setRemainingTrials] = useState(FREE_TRIAL_LIMIT);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -35,12 +35,17 @@ function App() {
       setRemainingTrials(remaining);
       setHistory(storedHistory);
     }
-    load();
+    load().catch(() => undefined);
   }, []);
 
   async function toggleEnabled() {
-    const next = !settings.enabled;
-    setSettings(await saveSettings({ enabled: next }));
+    try {
+      const next = !settings.enabled;
+      setSettings(await saveSettings({ enabled: next }));
+    } catch {
+      // Storage write failed — leave the toggle in its previous state
+      // rather than throw an unhandled rejection out of the onChange handler.
+    }
   }
 
   function openSettings() {

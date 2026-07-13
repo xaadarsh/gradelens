@@ -16,7 +16,7 @@ const PRIVACY_POLICY_URL = 'https://xaadarsh.github.io/gradelens-privacy/';
 const SUPPORT_EMAIL = 'aadarshraj380@gmail.com';
 
 function Settings() {
-  const [settings, setSettings] = useState<StoredSettings>({ provider: 'gemini', devProOverride: false, enabled: true, theme: 'light' });
+  const [settings, setSettings] = useState<StoredSettings>({ provider: 'gemini', enabled: true, theme: 'light' });
   const [draftGeminiKey, setDraftGeminiKey] = useState('');
   const [draftOpenAIKey, setDraftOpenAIKey] = useState('');
   const [licenseKey, setLicenseKey] = useState('');
@@ -46,15 +46,24 @@ function Settings() {
       setLicenseKey(storedLicense.licenseKey ?? '');
       checkProStatus().then(setLicense).catch(() => undefined);
     }
-    load();
+    load().catch(() => undefined);
   }, []);
 
   async function updateProvider(provider: DeepAnalysisProvider) {
-    setSettings(await saveSettings({ provider }));
+    try {
+      setSettings(await saveSettings({ provider }));
+    } catch {
+      // Storage write failed — leave the previous selection in place rather
+      // than throw an unhandled rejection out of a click handler.
+    }
   }
 
   async function updateTheme(theme: ThemePreference) {
-    setSettings(await saveSettings({ theme }));
+    try {
+      setSettings(await saveSettings({ theme }));
+    } catch {
+      // Same as updateProvider above.
+    }
   }
 
   // Return the outcome instead of pushing it into the page-bottom `status`
@@ -91,9 +100,13 @@ function Settings() {
   }
 
   async function verifyLicense() {
-    const result = await saveLicenseKey(licenseKey);
-    setLicense(result);
-    setStatus(result.message);
+    try {
+      const result = await saveLicenseKey(licenseKey);
+      setLicense(result);
+      setStatus(result.message);
+    } catch {
+      setStatus('Could not verify the license key. Check your connection and try again.');
+    }
   }
 
   const trialFillPct = Math.round((remainingTrials / FREE_TRIAL_LIMIT) * 100);
@@ -250,10 +263,17 @@ function KeyRow(props: {
     busyRef.current = true;
     setBusy(phase);
     setFeedback(null);
-    const result = await action();
-    busyRef.current = false;
-    setBusy('idle');
-    setFeedback(result);
+    try {
+      setFeedback(await action());
+    } catch (error) {
+      // Without this catch, a throw from action() (e.g. storage.local.set
+      // failing) would leave busyRef stuck true forever — Save/Test would
+      // be permanently disabled for the rest of the session.
+      setFeedback({ ok: false, message: error instanceof Error ? error.message : 'Something went wrong.' });
+    } finally {
+      busyRef.current = false;
+      setBusy('idle');
+    }
   }
 
   return (

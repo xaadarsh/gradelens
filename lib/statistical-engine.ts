@@ -1,6 +1,6 @@
 import type { CheckStatus, ConfidenceLevel, ReviewSample, RuleCheckResult, ScrapedAmazonPage, StatisticalAnalysis, TrustGrade } from './types';
 
-export const DISCLAIMER =
+const DISCLAIMER =
   'GradeLens shows pattern-based confidence signals from visible review data. It does not prove whether any review, reviewer, seller, or product is fake.';
 
 // Never apologize for population-sourced grading — it's the strongest signal
@@ -19,7 +19,7 @@ const POPULATION_DISCLAIMER =
 // hasPopulationCore below — only whether the sample-derived supporting
 // checks (verified-ratio, review-velocity, age-ratio, repeated-language)
 // get included alongside the population-level core.
-export const MIN_SAMPLE_SIZE = 30;
+const MIN_SAMPLE_SIZE = 30;
 
 const MIN_HISTOGRAM_LEVELS = 3;
 // Percentages should sum close to 100 (rounding); wider drift means the
@@ -63,11 +63,21 @@ export function analyzeReviews(page: ScrapedAmazonPage): StatisticalAnalysis {
       ]
     : populationChecks;
 
-  const score = Math.round(
-    checks.reduce((sum, check) => sum + check.score * checkWeight(check.id), 0) /
-      checks.reduce((sum, check) => sum + checkWeight(check.id), 0),
+  // A check that couldn't actually be computed on this page (status
+  // 'unknown' — a selector miss, an unreadable price, too few dated reviews
+  // to judge timing, etc.) must not drag the score toward its placeholder
+  // value at full weight. Only checks that produced a real read enter the
+  // weighted average; "unknown" is excluded outright, not soft-penalized.
+  // Falls back to using every check only in the practically-unreachable case
+  // where ALL of them came back unknown, to avoid a division by zero.
+  const ratedChecks = checks.filter((check) => check.status !== 'unknown');
+  const scoredChecks = ratedChecks.length > 0 ? ratedChecks : checks;
+  const rawScore = Math.round(
+    scoredChecks.reduce((sum, check) => sum + check.score * checkWeight(check.id), 0) /
+      scoredChecks.reduce((sum, check) => sum + checkWeight(check.id), 0),
   );
-  const grade = gradeFromScore(score);
+
+  const { grade, score, guardEngaged } = applyPopulationSanityGuard(gradeFromScore(rawScore), rawScore, page);
   const confidence = computeConfidence(page, hasSample);
 
   return {
@@ -77,8 +87,46 @@ export function analyzeReviews(page: ScrapedAmazonPage): StatisticalAnalysis {
     checks,
     disclaimer: hasSample ? DISCLAIMER : POPULATION_DISCLAIMER,
     confidence,
-    verdict: computeVerdict(grade, confidence, checks),
+    verdict: computeVerdict(grade, confidence, checks, guardEngaged),
   };
+}
+
+// Sanity guard: population evidence — Amazon's own displayed average
+// rating, backed by a genuinely large review count — is the strongest
+// signal GradeLens has and must never be contradicted by a worse grade. A
+// 195,000-review, 4.7-star product graded C or lower looks broken to any
+// user, regardless of what an individual pattern check flagged (an
+// unreadable price field, a slightly thin mid-range histogram band, etc.)
+// Only engages when the population evidence is itself unambiguous — very
+// high rating AND very large review count together; anything short of that
+// is exactly the kind of thinner, more ambiguous case the pattern checks
+// above exist to weigh in on, so it's left alone.
+const STRONG_POPULATION_MIN_RATING = 4.5;
+const STRONG_POPULATION_MIN_REVIEWS = 10000;
+const STRONG_POPULATION_FLOOR_GRADE: TrustGrade = 'B';
+// gradeFromScore's own B threshold — keeps score and grade mutually
+// consistent in case score is ever used to re-derive a grade elsewhere.
+const STRONG_POPULATION_FLOOR_SCORE = 74;
+const GRADE_RANK: Record<TrustGrade, number> = { A: 5, B: 4, C: 3, D: 2, F: 1, 'Insufficient data': 0 };
+
+function applyPopulationSanityGuard(
+  grade: TrustGrade,
+  score: number,
+  page: ScrapedAmazonPage,
+): { grade: TrustGrade; score: number; guardEngaged: boolean } {
+  const { averageRating, totalReviewCount } = page;
+  const populationIsStrong =
+    grade !== 'Insufficient data' &&
+    averageRating !== null &&
+    averageRating >= STRONG_POPULATION_MIN_RATING &&
+    !!totalReviewCount &&
+    totalReviewCount >= STRONG_POPULATION_MIN_REVIEWS;
+
+  if (!populationIsStrong || GRADE_RANK[grade] >= GRADE_RANK[STRONG_POPULATION_FLOOR_GRADE]) {
+    return { grade, score, guardEngaged: false };
+  }
+
+  return { grade: STRONG_POPULATION_FLOOR_GRADE, score: Math.max(score, STRONG_POPULATION_FLOOR_SCORE), guardEngaged: true };
 }
 
 // Confidence answers a different question than the grade does: not "is this
@@ -105,7 +153,7 @@ function computeConfidence(page: ScrapedAmazonPage, hasSample: boolean): Confide
 // card" but "should I buy this." Confidence tempers the grade's own
 // language — a clean-looking grade backed by thin data still gets a hedge,
 // because that's the honest claim, not the flattering one.
-function computeVerdict(grade: TrustGrade, confidence: ConfidenceLevel, checks: RuleCheckResult[]): string {
+function computeVerdict(grade: TrustGrade, confidence: ConfidenceLevel, checks: RuleCheckResult[], guardEngaged: boolean): string {
   const riskCount = checks.filter((check) => check.status === 'risk').length;
 
   // Price-vs-review-count firing red is the single most concrete,
@@ -114,6 +162,14 @@ function computeVerdict(grade: TrustGrade, confidence: ConfidenceLevel, checks: 
   const priceCheck = checks.find((check) => check.id === 'price-vs-reviews');
   if (priceCheck?.status === 'risk') {
     return priceCheck.detail;
+  }
+
+  // The population sanity guard overrode a worse computed grade — say so
+  // honestly rather than let the grade's own "signals look clean" language
+  // imply every individual check agreed, when what actually happened is
+  // Amazon's own rating history at huge scale outweighed a more mixed read.
+  if (guardEngaged) {
+    return "Amazon's own rating history here is overwhelmingly positive at a very large scale — that outweighs the more mixed pattern signals below. Buy with normal caution.";
   }
 
   if (grade === 'A' || grade === 'B') {
@@ -180,16 +236,37 @@ function checkHistogramShape(page: ScrapedAmazonPage): RuleCheckResult {
     return result('histogram-shape', 'Rating pattern', 'pass', 93, `${shape} — most ratings are high, with a normal mix of everything else too. That's what a genuine, unmanipulated spread looks like.`);
   }
 
-  if (p5 >= 70 && p1 >= 10) {
-    return result('histogram-shape', 'Rating pattern', 'risk', 25, `${shape} — ratings pile up at 5 stars and 1 star with almost nothing in between. That split can mean paid 5-star reviews mixed in with real unhappy buyers — worth a closer look.`);
-  }
+  // The actual manipulation signature is BOTH extremes inflated — fake
+  // positives at 5★ mixed with real burned buyers at 1★, hollowing out the
+  // middle. High 5★ share alone is not that: a huge, genuinely well-loved
+  // product naturally has a heavy 5★ skew AND a naturally small 1★ tail, and
+  // used to trip this as a false positive. Requiring p1 to itself be
+  // meaningfully elevated (not just "some 1-stars exist") separates the two.
+  // Both the required 1★ floor and how hollow the middle must be (relative
+  // to the two extremes) relax as the review count grows — sustained
+  // large-scale manipulation is both harder to pull off and far more likely
+  // to already have been caught by Amazon at huge volume, so a shape that's
+  // a red flag at a few hundred reviews needs to be starker to still be one
+  // at tens of thousands.
+  const reviewCount = page.totalReviewCount ?? 0;
+  const jShapeMinP1 = reviewCount >= 50000 ? 15 : reviewCount >= 5000 ? 12 : 10;
+  const hollowMiddleCeiling = reviewCount >= 50000 ? 0.12 : reviewCount >= 5000 ? 0.16 : 0.2;
+  const extremes = p5 + p1;
+  const hollowRatio = extremes > 0 ? middle / extremes : 1;
 
-  if (p5 >= 85) {
-    return result('histogram-shape', 'Rating pattern', 'risk', 32, `${shape} — an unusually high share of 5-star ratings with almost no lower ratings at all. Genuine products almost always pick up some spread.`);
+  if (p1 >= jShapeMinP1 && hollowRatio <= hollowMiddleCeiling) {
+    return result('histogram-shape', 'Rating pattern', 'risk', 25, `${shape} — ratings pile up at 5 stars and 1 star with almost nothing in between. That split can mean paid 5-star reviews mixed in with real unhappy buyers — worth a closer look.`);
   }
 
   if (middle >= 10) {
     return result('histogram-shape', 'Rating pattern', 'watch', 62, `${shape} — fewer mid-range (2-4★) ratings than typical. Not alarming on its own, but a bit thinner than a natural spread.`);
+  }
+
+  // Thin middle, but the 1-star tail never got large enough to read as a
+  // genuine J-shape, and the population is large enough that this is just
+  // what a well-loved product's rating history looks like.
+  if (reviewCount >= 10000 && p1 < jShapeMinP1) {
+    return result('histogram-shape', 'Rating pattern', 'pass', 88, `${shape} — a heavy 5-star skew with very few 1-star ratings, backed by a large, well-established review base. That's the expected shape for a genuinely popular product, not a manipulated one.`);
   }
 
   return result('histogram-shape', 'Rating pattern', 'watch', 55, `${shape} — the spread of ratings across the scale is thinner than typical for a genuine product.`);
@@ -197,7 +274,14 @@ function checkHistogramShape(page: ScrapedAmazonPage): RuleCheckResult {
 
 function checkVerifiedRatio(reviews: ReviewSample[]): RuleCheckResult {
   const known = reviews.filter((review) => !review.vine);
-  const ratio = known.length ? known.filter((review) => review.verified).length / known.length : 0;
+  // Same "can't compute, don't penalize" fix as the population checks: if
+  // the entire visible sample happens to be Vine reviews, there is nothing
+  // to score here — a 0% verified-purchase ratio would previously default
+  // in and read as a red flag, when the real answer is just "not applicable."
+  if (known.length === 0) {
+    return result('verified-ratio', 'Verified purchase mix', 'unknown', 60, 'The visible review sample was entirely Vine reviews, so a verified-purchase ratio could not be computed.');
+  }
+  const ratio = known.filter((review) => review.verified).length / known.length;
 
   if (ratio >= 0.72) {
     return result('verified-ratio', 'Verified purchase mix', 'pass', 92, `${percent(ratio)} of visible non-Vine reviews show a verified-purchase badge.`);

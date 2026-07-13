@@ -14,8 +14,9 @@ stats-*.json
 .wxt
 web-ext.config.ts
 
-# Playwright real-Brave verification (verify*.mjs) artifacts
-.tmp-brave-*
+# Playwright real-Brave verification (verify*.mjs) artifacts — any throwaway
+# profile dir (not just .tmp-brave-*) and the screenshot/report output dir.
+.tmp-*
 verification/
 
 # Editor directories and files

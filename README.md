@@ -37,11 +37,8 @@ npm run build     # production build -> .output/chrome-mv3
 ```
 
 Load `.output/chrome-mv3` as an unpacked extension via
-`chrome://extensions` (Developer mode → Load unpacked).
-
-> **Note:** `npm run dev` (the WXT dev server / HMR mode) has a known-broken
-> WebSocket handshake in this environment — content scripts fail to inject.
-> Always use the production build (`npm run build`) for local testing.
+`chrome://extensions` (Developer mode → Load unpacked). There is no dev-mode
+/ HMR workflow — always build and load the production output.
 
 ## Verification
 
@@ -54,10 +51,10 @@ never modifies code.
 node verify.mjs
 ```
 
-Additional targeted `verify-*.mjs` scripts in the repo root follow the same
-pattern for specific features (licensing, popup layout, etc.) and were used
-during development; they're not part of a CI suite and can be run ad hoc
-against the real browser + live Amazon.
+`verify-license.mjs` covers the Gumroad licensing flow specifically (real
+API for invalid keys, mocked success for valid keys, persistence, and
+network-failure degradation). Both follow the same real-browser pattern and
+are run ad hoc, not as a CI suite.
 
 ## Tech stack
 

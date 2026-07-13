@@ -61,8 +61,6 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --dur-fast: 150ms;
   --dur: 220ms;
-  --dur-slow: 300ms;
-  --stagger-step: 35ms;
 
   font-family: var(--font-body);
   color: var(--ink);

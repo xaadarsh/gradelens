@@ -18,7 +18,6 @@ const RENAMED_KEYS: [oldKey: string, newKey: string][] = [
   ['trustlens_history', 'gradelens_history'],
   ['trustlens.settings', 'gradelens.settings'],
   ['trustlens.license', 'gradelens.license'],
-  ['trustlens.devProOverride', 'gradelens.devProOverride'],
 ];
 
 let migrationPromise: Promise<void> | null = null;

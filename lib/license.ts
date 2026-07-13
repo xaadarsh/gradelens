@@ -10,6 +10,15 @@ const DEFAULT_STATUS: LicenseStatus = {
   message: 'Free plan',
 };
 
+interface GumroadVerifyResponse {
+  success?: boolean;
+  message?: string;
+  purchase?: {
+    refunded?: boolean;
+    chargebacked?: boolean;
+  };
+}
+
 export async function getCachedLicenseStatus(): Promise<LicenseStatus> {
   await ensureStorageMigrated();
   const stored = await browser.storage.local.get(LICENSE_KEY);
@@ -30,19 +39,6 @@ export async function checkProStatus(force = false): Promise<LicenseStatus> {
   return verifyLicense(cached.licenseKey, true);
 }
 
-export async function setDevProOverride(enabled: boolean): Promise<void> {
-  await ensureStorageMigrated();
-  await browser.storage.local.set({
-    'gradelens.devProOverride': enabled,
-  });
-}
-
-export async function getDevProOverride(): Promise<boolean> {
-  await ensureStorageMigrated();
-  const stored = await browser.storage.local.get('gradelens.devProOverride');
-  return Boolean(stored['gradelens.devProOverride']);
-}
-
 async function verifyLicense(licenseKey: string | undefined, persist: boolean): Promise<LicenseStatus> {
   if (!licenseKey) return DEFAULT_STATUS;
 
@@ -56,7 +52,7 @@ async function verifyLicense(licenseKey: string | undefined, persist: boolean): 
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
     });
-    const payload = await response.json();
+    const payload = (await response.json()) as GumroadVerifyResponse;
     const pro = Boolean(response.ok && payload.success && !payload.purchase?.refunded && !payload.purchase?.chargebacked);
     const status: LicenseStatus = {
       pro,

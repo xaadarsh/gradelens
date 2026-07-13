@@ -1,4 +1,3 @@
-import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { TrustPanel } from '@/components/TrustPanel';
 import '@/components/gradelens.css';
@@ -147,7 +146,7 @@ function startOrganicAccumulation(reactRoot: ReturnType<typeof createRoot>, acc:
       return;
     }
     const cards = queryAll('reviewCards', document);
-    const candidates = cards.map((card, index) => scrapeReview(card, acc.page.reviews.length + index, queryFirst));
+    const candidates = scrapeReviewCards(cards, acc.page.reviews.length);
     const added = mergeReviews(acc, candidates);
     if (added > 0) {
       console.log(
@@ -208,7 +207,7 @@ async function enhanceWithMoreReviews(reactRoot: ReturnType<typeof createRoot>, 
       return;
     }
 
-    const candidates = cards.map((card, index) => scrapeReview(card, acc.page.reviews.length + index, queryFirst));
+    const candidates = scrapeReviewCards(cards, acc.page.reviews.length);
     const added = mergeReviews(acc, candidates);
     if (added === 0) {
       console.log(`[GradeLens] Page ${pageNumber} returned no new reviews (likely end of pagination) — stopping scan, keeping ${acc.page.reviews.length} review(s).`);
@@ -334,7 +333,7 @@ function scrapeRatingHistogram(root: ParentNode): RatingHistogramEntry[] {
   // Amazon's row links carry aria-label="NN percent of reviews have N stars".
   const byText: RatingHistogramEntry[] = [];
   for (const row of table.querySelectorAll('li, tr, .a-histogram-row')) {
-    const ariaLabel = row.querySelector('[aria-label]')?.getAttribute('aria-label') ?? '';
+    const ariaLabel = ariaLabelOf(row);
     const starMatch = ariaLabel.match(/([1-5])\s*stars?/i) ?? text(row).match(/([1-5])\s*stars?/i);
     if (!starMatch) continue;
     const star = Number(starMatch[1]) as 1 | 2 | 3 | 4 | 5;
@@ -357,9 +356,13 @@ function extractHistogramPercent(row: Element): number | null {
     const fromAria = Number(ariaValue);
     if (!Number.isNaN(fromAria)) return fromAria;
   }
-  const ariaLabel = row.querySelector('[aria-label]')?.getAttribute('aria-label') ?? '';
+  const ariaLabel = ariaLabelOf(row);
   const match = ariaLabel.match(/(\d{1,3})\s?(?:%|percent)/i) ?? text(row).match(/(\d{1,3})\s?%/);
   return match ? Number(match[1]) : null;
+}
+
+function ariaLabelOf(row: Element): string {
+  return row.querySelector('[aria-label]')?.getAttribute('aria-label') ?? '';
 }
 
 function scrapeAmazonPage(root: Document): ScrapedAmazonPage & PageAnchors {
@@ -376,7 +379,7 @@ function scrapeAmazonPage(root: Document): ScrapedAmazonPage & PageAnchors {
     averageRating: numberFromText(text(queryFirst('averageRating', root))),
     totalReviewCount,
     productFirstAvailable: findDateFirstAvailable(queryAll('productDetails', root), selectors.productDetailRows, root),
-    reviews: reviewCards.map((card, index) => scrapeReview(card, index, queryFirst)),
+    reviews: scrapeReviewCards(reviewCards, 0),
     ratingHistogram: scrapeRatingHistogram(root),
     mountAnchor: queryFirst('mountAnchor', root),
     reviewsScanned: reviewCards.length,
@@ -414,20 +417,23 @@ function checkSelectorHealth(page: ScrapedAmazonPage): void {
   }
 }
 
-function scrapeReview(
-  card: Element,
-  index: number,
-  queryFirstFn: (group: 'reviewStar' | 'reviewTitle' | 'reviewBody' | 'reviewDate' | 'verifiedBadge' | 'vineBadge', root: ParentNode) => Element | null,
-): ReviewSample {
-  const verifiedText = text(queryFirstFn('verifiedBadge', card));
-  const vineText = text(queryFirstFn('vineBadge', card));
+// Shared by every place review cards get scraped (initial page load,
+// opportunistic pagination, organic accumulation) — previously each call
+// site re-typed the same card->ReviewSample mapping inline.
+function scrapeReviewCards(cards: Element[], startIndex: number): ReviewSample[] {
+  return cards.map((card, offset) => scrapeReview(card, startIndex + offset));
+}
+
+function scrapeReview(card: Element, index: number): ReviewSample {
+  const verifiedText = text(queryFirst('verifiedBadge', card));
+  const vineText = text(queryFirst('vineBadge', card));
 
   return {
     id: card.id || `visible-review-${index}`,
-    rating: numberFromText(text(queryFirstFn('reviewStar', card))),
-    title: cleanupReviewTitle(text(queryFirstFn('reviewTitle', card))),
-    body: text(queryFirstFn('reviewBody', card)),
-    date: text(queryFirstFn('reviewDate', card)) || null,
+    rating: numberFromText(text(queryFirst('reviewStar', card))),
+    title: cleanupReviewTitle(text(queryFirst('reviewTitle', card))),
+    body: text(queryFirst('reviewBody', card)),
+    date: text(queryFirst('reviewDate', card)) || null,
     verified: /verified purchase/i.test(verifiedText),
     vine: /vine/i.test(vineText),
   };

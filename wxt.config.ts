@@ -3,14 +3,6 @@ import { defineConfig } from 'wxt';
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
-  filterEntrypoints: process.env.NODE_ENV === 'production' ? ['popup', 'content', 'background', 'options'] : undefined,
-  // Every verify-*.mjs script in this repo drives its own Playwright-launched
-  // Brave against .output/chrome-mv3(-dev) directly — WXT's own auto-launched
-  // browser is never used and, in a non-interactive shell, its runner
-  // lifecycle can cause `wxt dev` to exit prematurely once that browser
-  // process ends. Disabled so `npm run dev` just runs the dev server and
-  // writes output, nothing more.
-  webExt: { disabled: true },
   manifest: {
     name: 'GradeLens',
     short_name: 'GradeLens',

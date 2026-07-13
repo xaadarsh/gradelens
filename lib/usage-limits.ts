@@ -4,7 +4,7 @@ const USAGE_KEY = 'gradelens_ai_uses';
 
 export const FREE_TRIAL_LIMIT = 5;
 
-export async function getUsageCount(): Promise<number> {
+async function getUsageCount(): Promise<number> {
   await ensureStorageMigrated();
   const stored = await browser.storage.local.get(USAGE_KEY);
   const value = Number(stored[USAGE_KEY] ?? 0);
@@ -25,8 +25,4 @@ export async function incrementUsage(): Promise<number> {
   const next = used + 1;
   await browser.storage.local.set({ [USAGE_KEY]: next });
   return next;
-}
-
-export async function resetUsageForDev(): Promise<void> {
-  await browser.storage.local.set({ [USAGE_KEY]: 0 });
 }

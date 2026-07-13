@@ -14,7 +14,7 @@ const HISTORY_KEY = 'gradelens_history';
 // Lightweight local-only memory of past checks — no backend, chrome.storage
 // only. Capped well below any storage.local quota concern; 100 products is
 // already far more than a popup list needs to show.
-export const MAX_HISTORY_ENTRIES = 100;
+const MAX_HISTORY_ENTRIES = 100;
 
 export async function getHistory(): Promise<HistoryEntry[]> {
   await ensureStorageMigrated();

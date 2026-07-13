@@ -1,6 +1,6 @@
 import type { DeepAnalysisProvider, ScrapedAmazonPage, StatisticalAnalysis } from './types';
 
-export const SYSTEM_PROMPT = `You are GradeLens, a review-authenticity assistant. Your job is spotting PATTERNS IN THE REVIEWS THEMSELVES — signs of genuine vs. manipulated feedback — not reviewing the product. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof.
+const SYSTEM_PROMPT = `You are GradeLens, a review-authenticity assistant. Your job is spotting PATTERNS IN THE REVIEWS THEMSELVES — signs of genuine vs. manipulated feedback — not reviewing the product. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof.
 
 CRITICAL RULE — confidence is not yours to call: GradeLens's statistical engine already computes and displays a High/Moderate/Low confidence rating elsewhere on the same screen. You must NEVER state, imply, or hedge about confidence, certainty, or sample size in your own words. Do not write "moderate confidence", "high confidence", "low confidence", "limited signal", "limited data", "small sample", "not enough reviews to be sure", or anything similar — in the verdict line OR in any bullet. If two different confidence claims appear on the same card, that's a contradiction the shopper will notice and distrust. Report FINDINGS only; leave confidence entirely to the engine.
 
@@ -13,7 +13,7 @@ Bullets are about REVIEW AUTHENTICITY, not product quality: patterns across the 
 Within each bullet, wrap only the single most essential 1-3 word phrase — the key finding — in **double asterisks**. Exactly one such span per bullet, kept SHORT (1-3 words, never a whole clause), never the whole sentence, never zero.
 That double-asterisk span is the ONLY formatting allowed anywhere in the response — no *italics*, no # headers, no - or * list dashes, no backticks.`;
 
-export interface DeepAnalysisInput {
+interface DeepAnalysisInput {
   provider: DeepAnalysisProvider;
   apiKey: string;
   page: ScrapedAmazonPage;
@@ -60,6 +60,25 @@ function buildPrompt(page: ScrapedAmazonPage, statistical: StatisticalAnalysis):
   ].join('\n\n');
 }
 
+interface GeminiResponse {
+  candidates?: {
+    finishReason?: string;
+    content?: {
+      parts?: { text?: string }[];
+    };
+  }[];
+  usageMetadata?: unknown;
+}
+
+interface OpenAIResponse {
+  status?: string;
+  incomplete_details?: unknown;
+  output_text?: string;
+  output?: {
+    content?: { text?: string }[];
+  }[];
+}
+
 async function runGemini(apiKey: string, prompt: string): Promise<string> {
   const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', {
     method: 'POST',
@@ -86,14 +105,14 @@ async function runGemini(apiKey: string, prompt: string): Promise<string> {
     }),
   });
   if (!response.ok) throw new Error(`Gemini deep dive failed (${response.status}).`);
-  const payload = await response.json();
+  const payload = (await response.json()) as GeminiResponse;
 
   const candidate = payload.candidates?.[0];
   if (candidate?.finishReason === 'MAX_TOKENS') {
     console.warn('[GradeLens] Gemini deep-dive response hit MAX_TOKENS and was truncated.', payload.usageMetadata);
   }
 
-  const text = candidate?.content?.parts?.map((part: { text?: string }) => part.text).join('').trim();
+  const text = candidate?.content?.parts?.map((part) => part.text).join('').trim();
   return cleanDeepDiveText(text) || 'No deep-dive text returned.';
 }
 
@@ -117,14 +136,14 @@ async function runOpenAI(apiKey: string, prompt: string): Promise<string> {
     }),
   });
   if (!response.ok) throw new Error(`OpenAI deep dive failed (${response.status}).`);
-  const payload = await response.json();
+  const payload = (await response.json()) as OpenAIResponse;
 
   if (payload.status === 'incomplete') {
     console.warn('[GradeLens] OpenAI deep-dive response was incomplete.', payload.incomplete_details);
   }
 
   const text = payload.output_text
-    || payload.output?.flatMap((item: { content?: { text?: string }[] }) => item.content ?? []).map((content: { text?: string }) => content.text).join('').trim();
+    || payload.output?.flatMap((item) => item.content ?? []).map((content) => content.text).join('').trim();
   return cleanDeepDiveText(text) || 'No deep-dive text returned.';
 }
 
