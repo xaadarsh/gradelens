@@ -1,0 +1,156 @@
+/* entrypoints/welcome/Welcome.css
+ *
+ * The welcome page reuses Settings.css wholesale (which itself imports
+ * tokens.css) rather than redefining any of it — same page shell
+ * (.settings-shell), same card/row/pill/segmented/button/input rules, same
+ * light/dark handling. This file only adds the handful of classes specific
+ * to onboarding content (hero, numbered steps, Pro callout, CTA, footer).
+ * Nothing here introduces a new color value outside the existing tokens.
+ */
+@import '../options/Settings.css';
+
+.welcome-inner {
+  max-width: 520px;
+}
+
+.welcome-hero {
+  margin: 0 0 24px;
+  text-align: center;
+}
+
+.welcome-hero h1 {
+  margin: 0 0 8px;
+}
+
+.welcome-tagline {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+
+.welcome-step {
+  /* Override .row's justify-content: space-between (designed for a
+     label+control pair, which pushes a two-child row's contents to
+     opposite edges) — the step number and its text should just flow left
+     to right with a fixed gap, not get shoved apart. */
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-start;
+}
+
+.welcome-step-num {
+  align-items: center;
+  background: var(--page);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  display: flex;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  height: 20px;
+  justify-content: center;
+  width: 20px;
+}
+
+.welcome-step-text {
+  flex: 1;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.welcome-ai-note {
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.5;
+  margin: 8px 2px 0;
+}
+
+/* Subtle brass-gold callout, same --warn tint used for the License card's
+   Pro badge and the settings upsell link — the whole "this is the paid
+   thing" language stays visually consistent across both surfaces. */
+.welcome-pro-card {
+  align-items: center;
+  background: color-mix(in srgb, var(--warn) 8%, var(--card));
+  border-color: color-mix(in srgb, var(--warn) 30%, var(--border));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 16px;
+  text-align: center;
+}
+
+.welcome-pro-title {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.welcome-pro-sub {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+
+.welcome-pro-link {
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform var(--dur-fast) var(--ease-spring), opacity var(--dur-fast) var(--ease-out);
+}
+
+.welcome-pro-link:hover {
+  opacity: 0.85;
+  transform: scale(1.04);
+}
+
+.welcome-cta {
+  background: var(--ink);
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--glyph);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 4px 0 20px;
+  padding: 12px;
+  transition: transform 220ms var(--ease-spring), box-shadow 220ms var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+  width: 100%;
+}
+
+.welcome-cta:hover {
+  opacity: 0.92;
+}
+
+.welcome-cta:active {
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--ink) 16%, transparent);
+  transform: scale(0.98);
+}
+
+.welcome-footer {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-size: 11.5px;
+  gap: 8px;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+
+.welcome-footer a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+}
+
+.welcome-footer a:hover {
+  color: var(--ink);
+  text-decoration-color: currentColor;
+}
+
+.welcome-footer-dot {
+  opacity: 0.6;
+}

@@ -96,6 +96,16 @@ html[data-theme='dark'] ::-webkit-scrollbar-thumb {
   color: var(--pass);
 }
 
+/* Brass-gold variant — the License card's own "Pro unlocked" confirmation,
+   deliberately distinct from the header's green .pill.pro (which just
+   answers "free or paid") — this one's a small celebratory badge, using the
+   same --warn amber tone already established for confidence-chip/medallion
+   accents elsewhere in the product. */
+.pill-gold {
+  background: color-mix(in srgb, var(--warn) 16%, transparent);
+  color: var(--warn);
+}
+
 /* Single centered column, generous section spacing. */
 .settings-inner {
   margin: 0 auto;
@@ -441,4 +451,28 @@ input:focus-visible {
   font-size: 12px;
   margin: 16px 0 0;
   text-align: center;
+}
+
+/* Subtle upsell line under the license-key row — a free-trial user who
+   doesn't have a key yet gets somewhere to go instead of a dead end at
+   5/5. Deliberately understated (small, secondary-toned prefix text) so it
+   reads as a helpful aside, not an ad; the link itself picks up the same
+   --warn brass-gold the Pro badge uses so "this is the paid thing" is
+   visually consistent everywhere it appears. */
+.license-upsell {
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  margin: 0;
+}
+
+.license-upsell-link {
+  color: var(--warn);
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.license-upsell-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
 }

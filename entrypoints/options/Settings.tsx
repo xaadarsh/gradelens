@@ -6,20 +6,19 @@
 // license management, appearance, and about info. Reachable via right-click
 // extension icon -> Options, or the popup's "Open Settings" button.
 
-import { useEffect, useRef, useState } from 'react';
-import { getSettings, maskApiKey, saveSettings, testApiKey } from '@/lib/byo-key';
+import { useEffect, useState } from 'react';
+import { AIProviderSetup } from '@/components/AIProviderSetup';
+import { getSettings, saveSettings } from '@/lib/byo-key';
 import { clearHistory } from '@/lib/history';
-import { checkProStatus, getCachedLicenseStatus, saveLicenseKey } from '@/lib/license';
+import { checkProStatus, getCachedLicenseStatus, GUMROAD_CHECKOUT_URL, saveLicenseKey } from '@/lib/license';
 import { FREE_TRIAL_LIMIT, getRemainingTrials } from '@/lib/usage-limits';
-import type { DeepAnalysisProvider, KeyTestResult, LicenseStatus, StoredSettings, ThemePreference } from '@/lib/types';
+import type { LicenseStatus, StoredSettings, ThemePreference } from '@/lib/types';
 
 const PRIVACY_POLICY_URL = 'https://xaadarsh.github.io/gradelens-privacy/';
 const SUPPORT_EMAIL = 'aadarshraj380@gmail.com';
 
 function Settings() {
   const [settings, setSettings] = useState<StoredSettings>({ provider: 'gemini', enabled: true, theme: 'light' });
-  const [draftGeminiKey, setDraftGeminiKey] = useState('');
-  const [draftOpenAIKey, setDraftOpenAIKey] = useState('');
   const [licenseKey, setLicenseKey] = useState('');
   const [license, setLicense] = useState<LicenseStatus>({ pro: false, message: 'Free plan' });
   const [remainingTrials, setRemainingTrials] = useState(FREE_TRIAL_LIMIT);
@@ -41,8 +40,6 @@ function Settings() {
     async function load() {
       const [storedSettings, storedLicense, remaining] = await Promise.all([getSettings(), getCachedLicenseStatus(), getRemainingTrials()]);
       setSettings(storedSettings);
-      setDraftGeminiKey(maskApiKey(storedSettings.geminiKey));
-      setDraftOpenAIKey(maskApiKey(storedSettings.openaiKey));
       setLicense(storedLicense);
       setRemainingTrials(remaining);
       setLicenseKey(storedLicense.licenseKey ?? '');
@@ -51,54 +48,13 @@ function Settings() {
     load().catch(() => undefined);
   }, []);
 
-  async function updateProvider(provider: DeepAnalysisProvider) {
-    try {
-      setSettings(await saveSettings({ provider }));
-    } catch {
-      // Storage write failed — leave the previous selection in place rather
-      // than throw an unhandled rejection out of a click handler.
-    }
-  }
-
   async function updateTheme(theme: ThemePreference) {
     try {
       setSettings(await saveSettings({ theme }));
     } catch {
-      // Same as updateProvider above.
+      // Storage write failed — leave the previous selection in place rather
+      // than throw an unhandled rejection out of a click handler.
     }
-  }
-
-  // Return the outcome instead of pushing it into the page-bottom `status`
-  // string — KeyRow shows it inline next to the button that triggered it.
-  async function saveKey(provider: DeepAnalysisProvider): Promise<KeyTestResult> {
-    const draft = (provider === 'gemini' ? draftGeminiKey : draftOpenAIKey).trim();
-    if (draft.includes('*')) {
-      return { ok: true, message: 'Key is already saved.' };
-    }
-    // Guards against wiping an already-saved key: an empty draft here used
-    // to come from the field's own onFocus handler clearing the masked
-    // display the instant it was clicked (fixed in KeyRow below), and
-    // clicking Save right after would have persisted that empty string
-    // over the real stored key. Keeping this check even with that fixed —
-    // a stray empty Save should never be able to erase a saved key.
-    if (!draft) {
-      return { ok: false, message: 'Enter an API key first.' };
-    }
-
-    const next = provider === 'gemini'
-      ? await saveSettings({ geminiKey: draft })
-      : await saveSettings({ openaiKey: draft });
-    setSettings(next);
-    setDraftGeminiKey(maskApiKey(next.geminiKey));
-    setDraftOpenAIKey(maskApiKey(next.openaiKey));
-    return { ok: true, message: `${provider === 'gemini' ? 'Gemini' : 'OpenAI'} key saved.` };
-  }
-
-  async function testKey(provider: DeepAnalysisProvider): Promise<KeyTestResult> {
-    const key = provider === 'gemini'
-      ? (draftGeminiKey.includes('*') ? settings.geminiKey : draftGeminiKey)
-      : (draftOpenAIKey.includes('*') ? settings.openaiKey : draftOpenAIKey);
-    return testApiKey(provider, key ?? '');
   }
 
   async function verifyLicense() {
@@ -138,43 +94,7 @@ function Settings() {
         {/* AI Provider */}
         <div className="settings-section">
           <p className="section-label"><ProviderIcon /> AI Provider</p>
-          <div className="card">
-            <div className="row">
-              <span className="row-label">Deep-dive provider</span>
-              <div className="segmented" data-active={settings.provider === 'gemini' ? 0 : 1}>
-                <button className={settings.provider === 'gemini' ? 'active' : ''} onClick={() => updateProvider('gemini')}>
-                  Gemini
-                </button>
-                <button className={settings.provider === 'openai' ? 'active' : ''} onClick={() => updateProvider('openai')}>
-                  OpenAI
-                </button>
-              </div>
-            </div>
-            <div className="divider" />
-            {/* Bug fix: only the active provider's key field renders — previously
-                both Gemini and OpenAI inputs rendered unconditionally regardless
-                of the selected tab, so a user could fill in the wrong key. Keying
-                on settings.provider also re-triggers the crossfade animation. */}
-            <div className="key-field-wrap" key={settings.provider}>
-              {settings.provider === 'gemini' ? (
-                <KeyRow
-                  label="Gemini API key"
-                  value={draftGeminiKey}
-                  onChange={setDraftGeminiKey}
-                  onSave={() => saveKey('gemini')}
-                  onTest={() => testKey('gemini')}
-                />
-              ) : (
-                <KeyRow
-                  label="OpenAI API key"
-                  value={draftOpenAIKey}
-                  onChange={setDraftOpenAIKey}
-                  onSave={() => saveKey('openai')}
-                  onTest={() => testKey('openai')}
-                />
-              )}
-            </div>
-          </div>
+          <AIProviderSetup settings={settings} onSettingsChange={setSettings} />
         </div>
 
         {/* License */}
@@ -182,10 +102,16 @@ function Settings() {
           <p className="section-label"><LicenseIcon /> License</p>
           <div className="card">
             {license.pro ? (
-              <div className="row">
-                <span className="row-label">Plan</span>
-                <span className="pro-status-text">{license.message}</span>
-              </div>
+              <>
+                <div className="row">
+                  <span className="row-label">Plan</span>
+                  <span className="pill pill-gold">Pro</span>
+                </div>
+                <div className="divider" />
+                <div className="row row-static">
+                  <span className="pro-status-text">{license.message}</span>
+                </div>
+              </>
             ) : (
               <>
                 <div className="row">
@@ -201,6 +127,15 @@ function Settings() {
                 <div className="row key-row">
                   <input value={licenseKey} onChange={(event) => setLicenseKey(event.target.value)} placeholder="XXXX-XXXX-XXXX" />
                   <button className="btn-sm btn-primary-sm" onClick={verifyLicense}>Verify</button>
+                </div>
+                <div className="divider" />
+                <div className="row row-static">
+                  <p className="license-upsell">
+                    Don't have a key?{' '}
+                    <a className="license-upsell-link" href={GUMROAD_CHECKOUT_URL} target="_blank" rel="noopener noreferrer">
+                      Get GradeLens Pro — $9 lifetime →
+                    </a>
+                  </p>
                 </div>
               </>
             )}
@@ -257,93 +192,6 @@ function Settings() {
         {status ? <p className="status">{status}</p> : null}
       </div>
     </main>
-  );
-}
-
-function KeyRow(props: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  onSave: () => Promise<KeyTestResult>;
-  onTest: () => Promise<KeyTestResult>;
-}) {
-  // busyRef is the actual guard: a ref mutates synchronously and is shared
-  // across handler invocations regardless of React's render/batching
-  // timing, unlike a useState value, which is only updated after a
-  // re-render — two click() calls fired back-to-back in the same tick both
-  // still read the OLD state value if the guard were state-based, so both
-  // would slip past an `if (busy !== 'idle') return` check and fire two
-  // concurrent requests with the same key. That's exactly what was tripping
-  // Gemini's rate limit and producing inconsistent pass/fail results.
-  // `busy` state stays alongside it purely to drive the visible
-  // "Saving…"/"Testing…" label and disabled styling.
-  const busyRef = useRef(false);
-  const [busy, setBusy] = useState<'idle' | 'saving' | 'testing'>('idle');
-  const [feedback, setFeedback] = useState<KeyTestResult | null>(null);
-
-  async function run(phase: 'saving' | 'testing', action: () => Promise<KeyTestResult>) {
-    if (busyRef.current) return;
-    busyRef.current = true;
-    setBusy(phase);
-    setFeedback(null);
-    try {
-      setFeedback(await action());
-    } catch (error) {
-      // Without this catch, a throw from action() (e.g. storage.local.set
-      // failing) would leave busyRef stuck true forever — Save/Test would
-      // be permanently disabled for the rest of the session.
-      setFeedback({ ok: false, message: error instanceof Error ? error.message : 'Something went wrong.' });
-    } finally {
-      busyRef.current = false;
-      setBusy('idle');
-    }
-  }
-
-  return (
-    <div className="key-field-block">
-      <div className="row key-row">
-        <label className="key-row-label">
-          {props.label}
-          <input
-            autoComplete="off"
-            onFocus={(event) => {
-              // Select-all, don't clear: a plain click/tab into the field
-              // was wiping the masked value on focus alone, before any
-              // typing — the field looked like the saved key had vanished.
-              // Selecting it instead means clicking-away leaves it
-              // untouched, while typing still naturally replaces the
-              // selected mask with the new key (standard input behavior).
-              if (props.value.includes('*')) event.target.select();
-            }}
-            onChange={(event) => props.onChange(event.target.value)}
-            placeholder="Paste API key"
-            type={props.value.includes('*') ? 'text' : 'password'}
-            value={props.value}
-          />
-        </label>
-        <button
-          className="btn-sm btn-primary-sm"
-          disabled={busy !== 'idle'}
-          onClick={() => run('saving', props.onSave)}
-          title="Save key"
-        >
-          {busy === 'saving' ? 'Saving…' : 'Save'}
-        </button>
-        <button
-          className="btn-sm btn-outline-sm"
-          disabled={busy !== 'idle'}
-          onClick={() => run('testing', props.onTest)}
-          title="Test connection"
-        >
-          {busy === 'testing' ? 'Testing…' : 'Test'}
-        </button>
-      </div>
-      {feedback ? (
-        <p className={`key-row-feedback ${feedback.ok ? 'key-row-feedback--ok' : 'key-row-feedback--error'}`}>
-          {feedback.message}
-        </p>
-      ) : null}
-    </div>
   );
 }
 

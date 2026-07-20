@@ -5,6 +5,12 @@ const LICENSE_KEY = 'gradelens.license';
 const RECHECK_INTERVAL_MS = 1000 * 60 * 60 * 24;
 const GUMROAD_PRODUCT_ID = 'UUbUxfEn2z_kWSWiTqVMWQ==';
 
+// The storefront checkout page (distinct from GUMROAD_PRODUCT_ID above,
+// which is the hashed product id used only for the license-verify API
+// call) — shared by the Settings license upsell and the welcome page's Pro
+// callout so both point at the same place without duplicating the URL.
+export const GUMROAD_CHECKOUT_URL = 'https://aadarshraj6.gumroad.com/l/gradelens';
+
 const DEFAULT_STATUS: LicenseStatus = {
   pro: false,
   message: 'Free plan',

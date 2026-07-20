@@ -78,6 +78,15 @@ async function main() {
       results.invalid_key_rejected = !/Pro license active/i.test(bodyText);
       // "Clear, non-scary" — no raw stack traces / TypeError noise surfaced to the user.
       results.invalid_key_message_clean = !/TypeError|at Object\.|\.ts:\d+|undefined is not/i.test(bodyText);
+
+      // Revenue-leak fix: a free/pre-Pro user must see the upsell link.
+      const upsellLink = optionsPage.locator('.license-upsell-link');
+      results.free_state_shows_buy_upsell_link = (await upsellLink.count()) > 0
+        && /Get GradeLens Pro/i.test((await upsellLink.textContent()) ?? '')
+        && (await upsellLink.getAttribute('href')) === 'https://aadarshraj6.gumroad.com/l/gradelens'
+        && (await upsellLink.getAttribute('target')) === '_blank'
+        && (await upsellLink.getAttribute('rel')) === 'noopener noreferrer';
+
       await optionsPage.screenshot({ path: path.join(VERIFICATION_DIR, 'license-invalid-key.png') });
       log('Screenshot saved: verification/license-invalid-key.png');
     } finally {
@@ -117,6 +126,15 @@ async function main() {
       // Trial counter should be bypassed entirely once Pro — the "Free trial"
       // progress row is only rendered in the non-pro branch (Settings.tsx).
       results.trial_ui_hidden_when_pro = !/Free trial/i.test(bodyText);
+
+      // Revenue-leak fix, Pro-active side: gold PRO badge shown, and the
+      // key-input/Verify row + buy-upsell link (both only meaningful for a
+      // user who doesn't have Pro yet) are gone entirely.
+      const goldPill = optionsPage.locator('.pill-gold');
+      results.pro_state_shows_gold_badge = (await goldPill.count()) > 0 && /pro/i.test((await goldPill.textContent()) ?? '');
+      results.pro_state_hides_key_input = (await optionsPage.locator('input[placeholder="XXXX-XXXX-XXXX"]').count()) === 0;
+      results.pro_state_hides_verify_button = (await optionsPage.locator('.key-row button:has-text("Verify")').count()) === 0;
+      results.pro_state_hides_buy_upsell_link = (await optionsPage.locator('.license-upsell-link').count()) === 0;
 
       await optionsPage.close();
     } finally {
