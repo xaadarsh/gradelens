@@ -1,5 +1,14 @@
+import { AIRequestError, fetchAIResponse, requestWithRetry } from './ai-request';
 import { ensureStorageMigrated } from './storage-migration';
 import type { DeepAnalysisProvider, KeyTestResult, StoredSettings } from './types';
+
+// Short per-attempt timeout for the "Test connection" button specifically —
+// it shares the deep-dive's 3-attempt retry funnel (see lib/ai-request.ts),
+// but a settings-page button must never spin for anywhere close to the
+// deep-dive's 30s-per-attempt budget. 2.5s/attempt keeps the worst case
+// (every attempt genuinely hangs) close to the ~10s a user will tolerate a
+// button spinning for.
+const TEST_TIMEOUT_MS = 2500;
 
 const SETTINGS_KEY = 'gradelens.settings';
 
@@ -36,44 +45,35 @@ export async function testApiKey(provider: DeepAnalysisProvider, apiKey: string)
     return { ok: false, message: 'Enter an API key first.' };
   }
 
+  const providerLabel = provider === 'gemini' ? 'Gemini' : 'OpenAI';
+
   try {
-    if (provider === 'gemini') {
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Reply with OK.' }] }],
-          generationConfig: { maxOutputTokens: 8 },
-        }),
-      });
-      return keyTestResultFromResponse('Gemini', response.status);
-    }
-
-    const response = await fetch('https://api.openai.com/v1/models', {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    return keyTestResultFromResponse('OpenAI', response.status);
-  } catch (error) {
-    return {
-      ok: false,
-      message: error instanceof Error ? error.message : 'Unable to test the key.',
-    };
-  }
-}
-
-// A 429 means the key itself is fine but the provider is rate-limiting this
-// request right now (often from firing the test repeatedly in quick
-// succession) — worded distinctly from an actually-invalid key so the user
-// doesn't mistake transient rate-limiting for a bad key and re-paste it.
-function keyTestResultFromResponse(providerLabel: string, status: number): KeyTestResult {
-  if (status >= 200 && status < 300) {
+    await requestWithRetry(() => (
+      provider === 'gemini'
+        ? fetchAIResponse('Gemini', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'Reply with OK.' }] }],
+            generationConfig: { maxOutputTokens: 8 },
+          }),
+        }, TEST_TIMEOUT_MS)
+        : fetchAIResponse('OpenAI', 'https://api.openai.com/v1/models', {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        }, TEST_TIMEOUT_MS)
+    ));
     return { ok: true, message: `${providerLabel} key works.` };
+  } catch (error) {
+    const classified = error instanceof AIRequestError
+      ? error
+      : new AIRequestError({
+        kind: 'unknown',
+        retryable: false,
+        message: error instanceof Error ? error.message : 'Unable to test the key.',
+      });
+    return { ok: false, message: classified.message };
   }
-  if (status === 429) {
-    return { ok: false, message: `${providerLabel} is rate-limiting this key right now — wait a moment and try again.` };
-  }
-  return { ok: false, message: `${providerLabel} rejected the key (${status}).` };
 }

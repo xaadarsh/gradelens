@@ -1,3 +1,4 @@
+import { fetchAIResponse, requestWithRetry } from './ai-request';
 import type { DeepAnalysisProvider, ScrapedAmazonPage, StatisticalAnalysis } from './types';
 
 const SYSTEM_PROMPT = `You are GradeLens, a review-authenticity assistant. Your job is spotting PATTERNS IN THE REVIEWS THEMSELVES — signs of genuine vs. manipulated feedback — not reviewing the product. Do not accuse a seller, reviewer, brand, product, or review of fraud. Do not claim proof.
@@ -29,26 +30,14 @@ export async function runDeepAnalysis(input: DeepAnalysisInput): Promise<string>
 
 // A hung request must never leave the panel stuck on "Running deep dive…"
 // forever with the button disabled — a slow/dead network or a provider
-// stall would otherwise do exactly that (plain fetch has no timeout). The
-// abort surfaces as a clean, friendly Error the deep-dive handler shows,
-// and because it throws *before* incrementUsage() runs, a timeout never
-// burns a free-trial analysis.
+// stall would otherwise do exactly that (plain fetch has no timeout).
+// fetchAIResponse (lib/ai-request.ts) turns a timeout/abort into a clean,
+// friendly, retryable error the deep-dive handler shows. Retries happen
+// entirely inside runGemini/runOpenAI below and TrustPanel only calls
+// incrementUsage() *after* runDeepAnalysis resolves — so neither a timeout
+// nor an exhausted retry loop ever burns a free-trial analysis, and a
+// mid-retry success only burns one even though multiple attempts fired.
 const DEEP_DIVE_TIMEOUT_MS = 30000;
-
-async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DEEP_DIVE_TIMEOUT_MS);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('The AI request timed out. Please try again.');
-    }
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 function buildPrompt(page: ScrapedAmazonPage, statistical: StatisticalAnalysis): string {
   const reviewLines = page.reviews.slice(0, 12).map((review, index) => {
@@ -103,31 +92,35 @@ interface OpenAIResponse {
 }
 
 async function runGemini(apiKey: string, prompt: string): Promise<string> {
-  const response = await fetchWithTimeout('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey,
-    },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        // Gemini 3.5 Flash thinks by default (thinkingLevel "medium") and
-        // those thinking tokens count against maxOutputTokens — with the
-        // old 700-token budget, thinking alone could consume the whole
-        // budget before any visible text was written, which is what was
-        // actually causing the "cuts off mid-sentence" truncation reported.
-        // This is a short pattern-analysis task, not one that benefits from
-        // heavy reasoning, so thinking is capped low and the budget is
-        // raised to comfortably cover thinking + the full visible answer.
-        thinkingConfig: { thinkingLevel: 'low' },
-        maxOutputTokens: 1536,
-        temperature: 0.2,
+  const response = await requestWithRetry(() => fetchAIResponse(
+    'Gemini',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
       },
-    }),
-  });
-  if (!response.ok) throw new Error(`Gemini deep dive failed (${response.status}).`);
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          // Gemini 3.5 Flash thinks by default (thinkingLevel "medium") and
+          // those thinking tokens count against maxOutputTokens — with the
+          // old 700-token budget, thinking alone could consume the whole
+          // budget before any visible text was written, which is what was
+          // actually causing the "cuts off mid-sentence" truncation reported.
+          // This is a short pattern-analysis task, not one that benefits from
+          // heavy reasoning, so thinking is capped low and the budget is
+          // raised to comfortably cover thinking + the full visible answer.
+          thinkingConfig: { thinkingLevel: 'low' },
+          maxOutputTokens: 1536,
+          temperature: 0.2,
+        },
+      }),
+    },
+    DEEP_DIVE_TIMEOUT_MS,
+  ));
   const payload = (await response.json()) as GeminiResponse;
 
   const candidate = payload.candidates?.[0];
@@ -140,25 +133,29 @@ async function runGemini(apiKey: string, prompt: string): Promise<string> {
 }
 
 async function runOpenAI(apiKey: string, prompt: string): Promise<string> {
-  const response = await fetchWithTimeout('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
+  const response = await requestWithRetry(() => fetchAIResponse(
+    'OpenAI',
+    'https://api.openai.com/v1/responses',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-5-mini',
+        instructions: SYSTEM_PROMPT,
+        input: prompt,
+        // Explicit "minimal" rather than relying on the model's default —
+        // reasoning tokens count against max_output_tokens on GPT-5-series
+        // models the same way Gemini's thinking tokens do, so an unset
+        // default is one config change away from the same truncation bug.
+        reasoning: { effort: 'minimal' },
+        max_output_tokens: 1536,
+      }),
     },
-    body: JSON.stringify({
-      model: 'gpt-5-mini',
-      instructions: SYSTEM_PROMPT,
-      input: prompt,
-      // Explicit "minimal" rather than relying on the model's default —
-      // reasoning tokens count against max_output_tokens on GPT-5-series
-      // models the same way Gemini's thinking tokens do, so an unset
-      // default is one config change away from the same truncation bug.
-      reasoning: { effort: 'minimal' },
-      max_output_tokens: 1536,
-    }),
-  });
-  if (!response.ok) throw new Error(`OpenAI deep dive failed (${response.status}).`);
+    DEEP_DIVE_TIMEOUT_MS,
+  ));
   const payload = (await response.json()) as OpenAIResponse;
 
   if (payload.status === 'incomplete') {
