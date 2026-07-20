@@ -2,7 +2,7 @@
   "name": "gradelens",
   "description": "Pattern-based Amazon review confidence checks.",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "build": "wxt build",
